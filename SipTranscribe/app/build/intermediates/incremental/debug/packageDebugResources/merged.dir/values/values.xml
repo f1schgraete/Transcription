@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="accent">#1565C0</color>
+    <color name="background">#F5F5F5</color>
+    <color name="call_background">#1A1A2E</color>
+    <color name="call_green">#2E7D32</color>
+    <color name="call_red">#C62828</color>
+    <color name="ic_launcher_background">#1565C0</color>
+    <color name="mic_off">#455A64</color>
+    <color name="mic_on">#E65100</color>
+    <color name="status_error">#C62828</color>
+    <color name="status_neutral">#757575</color>
+    <color name="status_ok">#2E7D32</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="text_on_dark">#FFFFFF</color>
+    <color name="text_on_dark_secondary">#B0BEC5</color>
+    <color name="text_primary">#1A1A2E</color>
+    <color name="transcript_bg">#FFFFFF</color>
+    <string name="app_name">SIP Untertitel</string>
+    <style name="DialButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">64dp</item>
+        <item name="android:layout_columnWeight">1</item>
+        <item name="android:layout_rowWeight">1</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:layout_margin">4dp</item>
+    </style>
+    <style name="Theme.SipTranscribe" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorPrimaryVariant">#0D47A1</item>
+        <item name="colorOnPrimary">@color/text_on_dark</item>
+        <item name="colorSecondary">@color/call_green</item>
+        <item name="android:windowBackground">@color/background</item>
+    </style>
+</resources>
