@@ -56,4 +56,16 @@ lime_update_threshold=86400
 [alerts]
 alerts_enabled=1
 
+[ui]
+# Simplified SIP-only phone: disable chat, meetings, recordings
+disable_chat_feature=1
+disable_meetings_feature=1
+disable_call_recordings_feature=1
+# Hide advanced and developer settings from users
+hide_advanced_settings=1
+# Assistant: hide Linphone account creation, QR code, and go straight to SIP login
+assistant_hide_create_account=1
+assistant_disable_qr_code=1
+assistant_go_directly_to_third_party_sip_account_login=1
+
 ## End of factory rc

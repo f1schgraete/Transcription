@@ -39,6 +39,7 @@ import kotlinx.coroutines.withContext
 import org.linphone.LinphoneApplication.Companion.coreContext
 import org.linphone.LinphoneApplication.Companion.corePreferences
 import org.linphone.R
+import org.linphone.core.CallTranscriptionManager
 import org.linphone.contacts.ContactsManager.ContactsListener
 import org.linphone.core.Address
 import org.linphone.core.AudioDevice
@@ -264,6 +265,31 @@ class CurrentCallViewModel
 
     val isScreenLocked = MutableLiveData<Boolean>()
 
+    // Transcription
+
+    /** Partial text from the recogniser shown live during the call. */
+    val liveTranscriptionText = MutableLiveData<String>()
+
+    /** Whether a completed transcript is available to display post-call. */
+    val hasCallTranscript = MutableLiveData<Boolean>(false)
+
+    /** Full transcript text, set when the call ends. */
+    val fullTranscriptText = MutableLiveData<String>()
+
+    private val transcriptionManager = CallTranscriptionManager(
+        context = coreContext.context,
+        scope = viewModelScope,
+        onPartialResult = { partial ->
+            liveTranscriptionText.postValue(partial)
+        },
+        onResult = { line ->
+            liveTranscriptionText.postValue(line)
+        },
+        onStatus = { status ->
+            liveTranscriptionText.postValue(status)
+        }
+    )
+
     lateinit var currentCall: Call
 
     private val contactsListener = object : ContactsListener {
@@ -376,6 +402,15 @@ class CurrentCallViewModel
                 } else if (call.state == Call.State.StreamsRunning) {
                     videoUpdateInProgress.postValue(false)
                     updateCallDuration()
+
+                    viewModelScope.launch(Dispatchers.Main) {
+                        if (liveTranscriptionText.value.isNullOrEmpty()) {
+                            liveTranscriptionText.value = coreContext.context.getString(
+                                R.string.call_transcription_listening
+                            )
+                        }
+                        transcriptionManager.start()
+                    }
                     if (corePreferences.automaticallyStartCallRecording) {
                         val recording = call.params.isRecording
                         isRecording.postValue(recording)
@@ -579,6 +614,7 @@ class CurrentCallViewModel
     @UiThread
     override fun onCleared() {
         super.onCleared()
+        transcriptionManager.stop()
 
         coreContext.postOnCoreThread { core ->
             core.removeListener(coreListener)
@@ -1151,6 +1187,19 @@ class CurrentCallViewModel
         } else {
             isVideoEnabled.postValue(call.currentParams.isVideoEnabled)
             updateVideoDirection(call.currentParams.videoDirection, skipIfNotStreamsRunning = true)
+
+            // If the call is already streaming when we configure it (e.g. ViewModel created
+            // after the call was already answered), start transcription now.
+            if (call.state == Call.State.StreamsRunning) {
+                viewModelScope.launch(Dispatchers.Main) {
+                    if (liveTranscriptionText.value.isNullOrEmpty()) {
+                        liveTranscriptionText.value = coreContext.context.getString(
+                            R.string.call_transcription_listening
+                        )
+                    }
+                    transcriptionManager.start()
+                }
+            }
         }
 
         if (ActivityCompat.checkSelfPermission(
@@ -1491,6 +1540,20 @@ class CurrentCallViewModel
         val reason = call.reason
         val status = call.callLog.status
         Log.i("$TAG Call is ending with status [$status] because of reason [$reason]")
+
+        // Stop the Linphone recording on the core thread before we read the file.
+        if (call.params.isRecording) {
+            call.stopRecording()
+        }
+
+        viewModelScope.launch(Dispatchers.Main) {
+            transcriptionManager.stop()
+            liveTranscriptionText.value = ""
+            if (transcriptionManager.hasTranscript()) {
+                fullTranscriptText.value = transcriptionManager.getFullTranscript()
+                hasCallTranscript.value = true
+            }
+        }
 
         when (status) {
             Call.Status.AcceptedElsewhere, Call.Status.DeclinedElsewhere -> {

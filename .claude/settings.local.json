@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /c/python/linphone-android/app/src/main/java/org/linphone/**/*.kt)",
+      "Bash(grep -r \"bottom.*nav\\\\|BottomNav\\\\|tab.*nav\" /c/python/linphone-android/app/src/main/res/layout/main*)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Java/jdk-21\" ./gradlew assembleDebug)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files/Android/Android Studio/jbr//**)",
+      "Bash(find \"/c\" -name \"java.exe\" -maxdepth 8)",
+      "Bash(JAVA_HOME=\"C:/Program Files/Java/jdk-21\" ./gradlew assembleDebug)",
+      "Bash(JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\" ./gradlew assembleDebug)",
+      "Bash(grep -v \"^\\\\s*$\")",
+      "Bash(grep -v \"\\\\.class$\")",
+      "Bash(jar tf:*)",
+      "Read(//tmp/**)",
+      "Bash('/c/Program Files/Android/Android Studio/jbr/bin/jar' tf classes.jar)",
+      "Bash(unzip -o classes.jar \"org/linphone/core/Call.class\" -d .)",
+      "Bash('/c/Program Files/Android/Android Studio/jbr/bin/javap' -p org/linphone/core/Call.class)",
+      "Bash(unzip -o classes.jar \"org/linphone/core/RecorderParams.class\" -d .)",
+      "Bash('/c/Program Files/Android/Android Studio/jbr/bin/javap' -p org/linphone/core/RecorderParams.class)",
+      "Bash(./gradlew :app:compileDebugKotlin)",
+      "Bash(export JAVA_HOME=\"/c/Program Files/Android/Android Studio/jbr\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")"
+    ]
+  }
+}

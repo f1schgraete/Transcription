@@ -71,11 +71,22 @@ class EndedCallFragment : GenericCallFragment() {
         binding.lifecycleOwner = viewLifecycleOwner
         binding.viewModel = callViewModel
 
+        binding.closeButton?.setOnClickListener {
+            Log.i("$TAG User closed the transcript screen")
+            requireActivity().finish()
+        }
+
         Log.i("$TAG Showing ended call fragment")
     }
 
     override fun onResume() {
         super.onResume()
+
+        // When a transcript is available the user closes the screen manually via the close button.
+        if (callViewModel.hasCallTranscript.value == true) {
+            Log.i("$TAG Transcript is available, waiting for manual close")
+            return
+        }
 
         lifecycleScope.launch {
             withContext(Dispatchers.IO) {

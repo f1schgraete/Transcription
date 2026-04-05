@@ -380,6 +380,20 @@ class ActiveCallFragment : GenericCallFragment() {
             viewLifecycleOwner,
             backPressedCallback
         )
+
+        callViewModel.liveTranscriptionText.observe(viewLifecycleOwner) { text ->
+            if (text.isNullOrBlank()) {
+                binding.transcriptionStrip?.visibility = View.GONE
+            } else {
+                binding.transcriptionText?.text = text
+                binding.transcriptionStrip?.visibility = View.VISIBLE
+                // Auto-scroll to show the latest words
+                binding.transcriptionText?.post {
+                    val scrollView = binding.transcriptionText?.parent as? android.widget.ScrollView
+                    scrollView?.fullScroll(View.FOCUS_DOWN)
+                }
+            }
+        }
     }
 
     override fun onResume() {
