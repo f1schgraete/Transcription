@@ -1,0 +1,5 @@
+C:\python\claude\SipTranscribe\app\src\main\java\com\siptranscribe\app\TranscriptionManager.kt
+C:\python\claude\SipTranscribe\app\src\main\java\com\siptranscribe\app\LinphoneManager.kt
+C:\python\claude\SipTranscribe\app\src\main\java\com\siptranscribe\app\MainActivity.kt
+C:\python\claude\SipTranscribe\app\src\main\java\com\siptranscribe\app\CallActivity.kt
+C:\python\claude\SipTranscribe\app\src\main\java\com\siptranscribe\app\SipService.kt

@@ -4,19 +4,19 @@ plugins {
 }
 
 android {
-    namespace 'com.siptranscribe.app'
-    compileSdk 34
+    namespace = 'com.siptranscribe.app'
+    compileSdk = 34
 
     defaultConfig {
-        applicationId "com.siptranscribe.app"
-        minSdk 26
-        targetSdk 34
+        applicationId = "com.siptranscribe.app"
+        minSdk = 26
+        targetSdk = 34
         versionCode 1
         versionName "1.0"
     }
 
     buildFeatures {
-        viewBinding true
+        viewBinding = true
     }
 
     compileOptions {

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/c/python/claude/**)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(where java:*)",
+      "Read(//c/Program Files/Android/Android Studio/jbr/bin/**)",
+      "Read(//c/Program Files/Android/Android Studio//**)"
+    ]
+  }
+}

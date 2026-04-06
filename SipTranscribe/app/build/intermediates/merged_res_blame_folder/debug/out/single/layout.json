@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.siptranscribe.app-mergeDebugResources-33:/layout/activity_call.xml",
+        "source": "com.siptranscribe.app-main-36:/layout/activity_call.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-mergeDebugResources-33:/layout/activity_main.xml",
+        "source": "com.siptranscribe.app-main-36:/layout/activity_main.xml"
+    }
+]

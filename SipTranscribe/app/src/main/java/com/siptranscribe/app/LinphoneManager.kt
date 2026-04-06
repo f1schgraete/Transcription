@@ -128,7 +128,7 @@ object LinphoneManager {
 
         val params = c.createCallParams(null) ?: return null
         params.mediaEncryption = MediaEncryption.SRTP
-        params.enableVideo(false)
+        params.videoEnabled = false
 
         return c.inviteAddressWithParams(remoteAddress, params)
     }
@@ -136,7 +136,7 @@ object LinphoneManager {
     fun acceptCall(call: Call) {
         val c = core ?: return
         val params = c.createCallParams(call) ?: return
-        params.enableVideo(false)
+        params.videoEnabled = false
         call.acceptWithParams(params)
         routeToSpeaker()
     }
@@ -155,7 +155,7 @@ object LinphoneManager {
      * to capture the remote party's voice coming through the loudspeaker.
      */
     fun setMicEnabled(enabled: Boolean) {
-        core?.enableMic(enabled)
+        core?.micEnabled = enabled
     }
 
     fun routeToSpeaker() {
