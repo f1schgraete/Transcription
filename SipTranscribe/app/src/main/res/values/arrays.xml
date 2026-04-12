@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="transport_types">
+        <item>UDP</item>
+        <item>TCP</item>
+        <item>TLS</item>
+    </string-array>
+    <string-array name="media_encryptions">
+        <item>Keine</item>
+        <item>SRTP</item>
+        <item>ZRTP</item>
+        <item>DTLS</item>
+    </string-array>
+</resources>
