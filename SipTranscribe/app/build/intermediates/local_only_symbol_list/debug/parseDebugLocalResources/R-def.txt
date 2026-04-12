@@ -1,5 +1,7 @@
 R_DEF: Internal format may change without notice
 local
+array media_encryptions
+array transport_types
 color accent
 color background
 color call_background
@@ -18,6 +20,8 @@ color text_primary
 color transcript_bg
 drawable ic_launcher_foreground
 drawable ic_phone
+id actv_media_enc
+id actv_transport
 id btn0
 id btn1
 id btn2
@@ -29,6 +33,7 @@ id btn7
 id btn8
 id btn9
 id btn_accept
+id btn_advanced
 id btn_call
 id btn_decline
 id btn_delete
@@ -38,12 +43,18 @@ id btn_register
 id btn_star
 id btn_toggle_mic
 id card_transcript
+id et_auth_user
 id et_display_name
 id et_domain
+id et_expires
+id et_outbound_proxy
 id et_password
 id et_phone
+id et_port
+id et_realm
 id et_username
 id layout_active
+id layout_advanced
 id layout_incoming
 id scroll_history
 id tv_caller

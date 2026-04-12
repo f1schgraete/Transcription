@@ -4,8 +4,10 @@ package com.siptranscribe.app.databinding;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -21,6 +23,12 @@ import java.lang.String;
 public final class ActivityMainBinding implements ViewBinding {
   @NonNull
   private final ScrollView rootView;
+
+  @NonNull
+  public final AutoCompleteTextView actvMediaEnc;
+
+  @NonNull
+  public final AutoCompleteTextView actvTransport;
 
   @NonNull
   public final Button btn0;
@@ -53,6 +61,9 @@ public final class ActivityMainBinding implements ViewBinding {
   public final Button btn9;
 
   @NonNull
+  public final Button btnAdvanced;
+
+  @NonNull
   public final Button btnCall;
 
   @NonNull
@@ -68,10 +79,19 @@ public final class ActivityMainBinding implements ViewBinding {
   public final Button btnStar;
 
   @NonNull
+  public final TextInputEditText etAuthUser;
+
+  @NonNull
   public final TextInputEditText etDisplayName;
 
   @NonNull
   public final TextInputEditText etDomain;
+
+  @NonNull
+  public final TextInputEditText etExpires;
+
+  @NonNull
+  public final TextInputEditText etOutboundProxy;
 
   @NonNull
   public final TextInputEditText etPassword;
@@ -80,20 +100,36 @@ public final class ActivityMainBinding implements ViewBinding {
   public final EditText etPhone;
 
   @NonNull
+  public final TextInputEditText etPort;
+
+  @NonNull
+  public final TextInputEditText etRealm;
+
+  @NonNull
   public final TextInputEditText etUsername;
+
+  @NonNull
+  public final LinearLayout layoutAdvanced;
 
   @NonNull
   public final TextView tvStatus;
 
-  private ActivityMainBinding(@NonNull ScrollView rootView, @NonNull Button btn0,
-      @NonNull Button btn1, @NonNull Button btn2, @NonNull Button btn3, @NonNull Button btn4,
-      @NonNull Button btn5, @NonNull Button btn6, @NonNull Button btn7, @NonNull Button btn8,
-      @NonNull Button btn9, @NonNull Button btnCall, @NonNull Button btnDelete,
-      @NonNull Button btnHash, @NonNull Button btnRegister, @NonNull Button btnStar,
+  private ActivityMainBinding(@NonNull ScrollView rootView,
+      @NonNull AutoCompleteTextView actvMediaEnc, @NonNull AutoCompleteTextView actvTransport,
+      @NonNull Button btn0, @NonNull Button btn1, @NonNull Button btn2, @NonNull Button btn3,
+      @NonNull Button btn4, @NonNull Button btn5, @NonNull Button btn6, @NonNull Button btn7,
+      @NonNull Button btn8, @NonNull Button btn9, @NonNull Button btnAdvanced,
+      @NonNull Button btnCall, @NonNull Button btnDelete, @NonNull Button btnHash,
+      @NonNull Button btnRegister, @NonNull Button btnStar, @NonNull TextInputEditText etAuthUser,
       @NonNull TextInputEditText etDisplayName, @NonNull TextInputEditText etDomain,
+      @NonNull TextInputEditText etExpires, @NonNull TextInputEditText etOutboundProxy,
       @NonNull TextInputEditText etPassword, @NonNull EditText etPhone,
-      @NonNull TextInputEditText etUsername, @NonNull TextView tvStatus) {
+      @NonNull TextInputEditText etPort, @NonNull TextInputEditText etRealm,
+      @NonNull TextInputEditText etUsername, @NonNull LinearLayout layoutAdvanced,
+      @NonNull TextView tvStatus) {
     this.rootView = rootView;
+    this.actvMediaEnc = actvMediaEnc;
+    this.actvTransport = actvTransport;
     this.btn0 = btn0;
     this.btn1 = btn1;
     this.btn2 = btn2;
@@ -104,16 +140,23 @@ public final class ActivityMainBinding implements ViewBinding {
     this.btn7 = btn7;
     this.btn8 = btn8;
     this.btn9 = btn9;
+    this.btnAdvanced = btnAdvanced;
     this.btnCall = btnCall;
     this.btnDelete = btnDelete;
     this.btnHash = btnHash;
     this.btnRegister = btnRegister;
     this.btnStar = btnStar;
+    this.etAuthUser = etAuthUser;
     this.etDisplayName = etDisplayName;
     this.etDomain = etDomain;
+    this.etExpires = etExpires;
+    this.etOutboundProxy = etOutboundProxy;
     this.etPassword = etPassword;
     this.etPhone = etPhone;
+    this.etPort = etPort;
+    this.etRealm = etRealm;
     this.etUsername = etUsername;
+    this.layoutAdvanced = layoutAdvanced;
     this.tvStatus = tvStatus;
   }
 
@@ -144,6 +187,18 @@ public final class ActivityMainBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.actv_media_enc;
+      AutoCompleteTextView actvMediaEnc = ViewBindings.findChildViewById(rootView, id);
+      if (actvMediaEnc == null) {
+        break missingId;
+      }
+
+      id = R.id.actv_transport;
+      AutoCompleteTextView actvTransport = ViewBindings.findChildViewById(rootView, id);
+      if (actvTransport == null) {
+        break missingId;
+      }
+
       id = R.id.btn0;
       Button btn0 = ViewBindings.findChildViewById(rootView, id);
       if (btn0 == null) {
@@ -204,6 +259,12 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.btn_advanced;
+      Button btnAdvanced = ViewBindings.findChildViewById(rootView, id);
+      if (btnAdvanced == null) {
+        break missingId;
+      }
+
       id = R.id.btn_call;
       Button btnCall = ViewBindings.findChildViewById(rootView, id);
       if (btnCall == null) {
@@ -234,6 +295,12 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.et_auth_user;
+      TextInputEditText etAuthUser = ViewBindings.findChildViewById(rootView, id);
+      if (etAuthUser == null) {
+        break missingId;
+      }
+
       id = R.id.et_display_name;
       TextInputEditText etDisplayName = ViewBindings.findChildViewById(rootView, id);
       if (etDisplayName == null) {
@@ -243,6 +310,18 @@ public final class ActivityMainBinding implements ViewBinding {
       id = R.id.et_domain;
       TextInputEditText etDomain = ViewBindings.findChildViewById(rootView, id);
       if (etDomain == null) {
+        break missingId;
+      }
+
+      id = R.id.et_expires;
+      TextInputEditText etExpires = ViewBindings.findChildViewById(rootView, id);
+      if (etExpires == null) {
+        break missingId;
+      }
+
+      id = R.id.et_outbound_proxy;
+      TextInputEditText etOutboundProxy = ViewBindings.findChildViewById(rootView, id);
+      if (etOutboundProxy == null) {
         break missingId;
       }
 
@@ -258,9 +337,27 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.et_port;
+      TextInputEditText etPort = ViewBindings.findChildViewById(rootView, id);
+      if (etPort == null) {
+        break missingId;
+      }
+
+      id = R.id.et_realm;
+      TextInputEditText etRealm = ViewBindings.findChildViewById(rootView, id);
+      if (etRealm == null) {
+        break missingId;
+      }
+
       id = R.id.et_username;
       TextInputEditText etUsername = ViewBindings.findChildViewById(rootView, id);
       if (etUsername == null) {
+        break missingId;
+      }
+
+      id = R.id.layout_advanced;
+      LinearLayout layoutAdvanced = ViewBindings.findChildViewById(rootView, id);
+      if (layoutAdvanced == null) {
         break missingId;
       }
 
@@ -270,9 +367,10 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityMainBinding((ScrollView) rootView, btn0, btn1, btn2, btn3, btn4, btn5,
-          btn6, btn7, btn8, btn9, btnCall, btnDelete, btnHash, btnRegister, btnStar, etDisplayName,
-          etDomain, etPassword, etPhone, etUsername, tvStatus);
+      return new ActivityMainBinding((ScrollView) rootView, actvMediaEnc, actvTransport, btn0, btn1,
+          btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btnAdvanced, btnCall, btnDelete, btnHash,
+          btnRegister, btnStar, etAuthUser, etDisplayName, etDomain, etExpires, etOutboundProxy,
+          etPassword, etPhone, etPort, etRealm, etUsername, layoutAdvanced, tvStatus);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

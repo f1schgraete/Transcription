@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="media_encryptions">
+        <item>Keine</item>
+        <item>SRTP</item>
+        <item>ZRTP</item>
+        <item>DTLS</item>
+    </string-array>
+    <string-array name="transport_types">
+        <item>UDP</item>
+        <item>TCP</item>
+        <item>TLS</item>
+    </string-array>
     <color name="accent">#1565C0</color>
     <color name="background">#F5F5F5</color>
     <color name="call_background">#1A1A2E</color>
@@ -26,7 +37,7 @@
         <item name="android:textStyle">bold</item>
         <item name="android:layout_margin">4dp</item>
     </style>
-    <style name="Theme.SipTranscribe" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <style name="Theme.SipTranscribe" parent="Theme.MaterialComponents.Light.DarkActionBar">
         <item name="colorPrimary">@color/accent</item>
         <item name="colorPrimaryVariant">#0D47A1</item>
         <item name="colorOnPrimary">@color/text_on_dark</item>

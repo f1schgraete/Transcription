@@ -5,7 +5,10 @@
       "Bash(./gradlew assembleDebug)",
       "Bash(where java:*)",
       "Read(//c/Program Files/Android/Android Studio/jbr/bin/**)",
-      "Read(//c/Program Files/Android/Android Studio//**)"
+      "Read(//c/Program Files/Android/Android Studio//**)",
+      "Bash(grep:*)",
+      "Bash(jar tf:*)",
+      "Bash(./gradlew dependencies:*)"
     ]
   }
 }

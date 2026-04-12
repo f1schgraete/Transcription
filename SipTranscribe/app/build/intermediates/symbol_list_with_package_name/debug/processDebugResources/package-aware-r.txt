@@ -77,6 +77,8 @@ animator mtrl_fab_hide_motion_spec
 animator mtrl_fab_show_motion_spec
 animator mtrl_fab_transformation_sheet_collapse_spec
 animator mtrl_fab_transformation_sheet_expand_spec
+array media_encryptions
+array transport_types
 attr SharedValue
 attr SharedValueId
 attr actionBarDivider
@@ -3162,6 +3164,8 @@ id action_mode_close_button
 id action_text
 id actions
 id activity_chooser_view_content
+id actv_media_enc
+id actv_transport
 id add
 id alertTitle
 id aligned
@@ -3201,6 +3205,7 @@ id btn7
 id btn8
 id btn9
 id btn_accept
+id btn_advanced
 id btn_call
 id btn_decline
 id btn_delete
@@ -3291,10 +3296,15 @@ id end
 id endToStart
 id enterAlways
 id enterAlwaysCollapsed
+id et_auth_user
 id et_display_name
 id et_domain
+id et_expires
+id et_outbound_proxy
 id et_password
 id et_phone
+id et_port
+id et_realm
 id et_username
 id exitUntilCollapsed
 id expand_activities_button
@@ -3350,6 +3360,7 @@ id jumpToStart
 id labeled
 id layout
 id layout_active
+id layout_advanced
 id layout_incoming
 id left
 id leftToRight
