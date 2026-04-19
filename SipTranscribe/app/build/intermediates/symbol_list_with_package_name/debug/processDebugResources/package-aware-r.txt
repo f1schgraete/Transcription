@@ -3211,13 +3211,16 @@ id btn_decline
 id btn_delete
 id btn_hang_up
 id btn_hash
+id btn_plus
 id btn_register
+id btn_settings
 id btn_star
 id btn_toggle_mic
 id buttonPanel
 id cache_measures
 id callMeasure
 id cancel_button
+id card_settings
 id card_transcript
 id carryVelocity
 id center

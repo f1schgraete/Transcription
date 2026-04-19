@@ -1,7 +1,11 @@
 [
     {
-        "merged": "com.siptranscribe.app-mergeDebugResources-33:/layout/activity_call.xml",
-        "source": "com.siptranscribe.app-main-36:/layout/activity_call.xml"
+        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-mergeDebugResources-33:\\layout\\activity_call.xml",
+        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\layout\\activity_call.xml"
+    },
+    {
+        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-mergeDebugResources-33:\\layout\\activity_main.xml",
+        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\layout\\activity_main.xml"
     },
     {
         "merged": "com.siptranscribe.app-mergeDebugResources-33:/layout/activity_main.xml",

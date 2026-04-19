@@ -12,6 +12,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.cardview.widget.CardView;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
 import com.google.android.material.textfield.TextInputEditText;
@@ -73,10 +74,19 @@ public final class ActivityMainBinding implements ViewBinding {
   public final Button btnHash;
 
   @NonNull
+  public final Button btnPlus;
+
+  @NonNull
   public final Button btnRegister;
 
   @NonNull
+  public final Button btnSettings;
+
+  @NonNull
   public final Button btnStar;
+
+  @NonNull
+  public final CardView cardSettings;
 
   @NonNull
   public final TextInputEditText etAuthUser;
@@ -120,13 +130,14 @@ public final class ActivityMainBinding implements ViewBinding {
       @NonNull Button btn4, @NonNull Button btn5, @NonNull Button btn6, @NonNull Button btn7,
       @NonNull Button btn8, @NonNull Button btn9, @NonNull Button btnAdvanced,
       @NonNull Button btnCall, @NonNull Button btnDelete, @NonNull Button btnHash,
-      @NonNull Button btnRegister, @NonNull Button btnStar, @NonNull TextInputEditText etAuthUser,
-      @NonNull TextInputEditText etDisplayName, @NonNull TextInputEditText etDomain,
-      @NonNull TextInputEditText etExpires, @NonNull TextInputEditText etOutboundProxy,
-      @NonNull TextInputEditText etPassword, @NonNull EditText etPhone,
-      @NonNull TextInputEditText etPort, @NonNull TextInputEditText etRealm,
-      @NonNull TextInputEditText etUsername, @NonNull LinearLayout layoutAdvanced,
-      @NonNull TextView tvStatus) {
+      @NonNull Button btnPlus, @NonNull Button btnRegister, @NonNull Button btnSettings,
+      @NonNull Button btnStar, @NonNull CardView cardSettings,
+      @NonNull TextInputEditText etAuthUser, @NonNull TextInputEditText etDisplayName,
+      @NonNull TextInputEditText etDomain, @NonNull TextInputEditText etExpires,
+      @NonNull TextInputEditText etOutboundProxy, @NonNull TextInputEditText etPassword,
+      @NonNull EditText etPhone, @NonNull TextInputEditText etPort,
+      @NonNull TextInputEditText etRealm, @NonNull TextInputEditText etUsername,
+      @NonNull LinearLayout layoutAdvanced, @NonNull TextView tvStatus) {
     this.rootView = rootView;
     this.actvMediaEnc = actvMediaEnc;
     this.actvTransport = actvTransport;
@@ -144,8 +155,11 @@ public final class ActivityMainBinding implements ViewBinding {
     this.btnCall = btnCall;
     this.btnDelete = btnDelete;
     this.btnHash = btnHash;
+    this.btnPlus = btnPlus;
     this.btnRegister = btnRegister;
+    this.btnSettings = btnSettings;
     this.btnStar = btnStar;
+    this.cardSettings = cardSettings;
     this.etAuthUser = etAuthUser;
     this.etDisplayName = etDisplayName;
     this.etDomain = etDomain;
@@ -283,15 +297,33 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.btn_plus;
+      Button btnPlus = ViewBindings.findChildViewById(rootView, id);
+      if (btnPlus == null) {
+        break missingId;
+      }
+
       id = R.id.btn_register;
       Button btnRegister = ViewBindings.findChildViewById(rootView, id);
       if (btnRegister == null) {
         break missingId;
       }
 
+      id = R.id.btn_settings;
+      Button btnSettings = ViewBindings.findChildViewById(rootView, id);
+      if (btnSettings == null) {
+        break missingId;
+      }
+
       id = R.id.btn_star;
       Button btnStar = ViewBindings.findChildViewById(rootView, id);
       if (btnStar == null) {
+        break missingId;
+      }
+
+      id = R.id.card_settings;
+      CardView cardSettings = ViewBindings.findChildViewById(rootView, id);
+      if (cardSettings == null) {
         break missingId;
       }
 
@@ -369,8 +401,9 @@ public final class ActivityMainBinding implements ViewBinding {
 
       return new ActivityMainBinding((ScrollView) rootView, actvMediaEnc, actvTransport, btn0, btn1,
           btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btnAdvanced, btnCall, btnDelete, btnHash,
-          btnRegister, btnStar, etAuthUser, etDisplayName, etDomain, etExpires, etOutboundProxy,
-          etPassword, etPhone, etPort, etRealm, etUsername, layoutAdvanced, tvStatus);
+          btnPlus, btnRegister, btnSettings, btnStar, cardSettings, etAuthUser, etDisplayName,
+          etDomain, etExpires, etOutboundProxy, etPassword, etPhone, etPort, etRealm, etUsername,
+          layoutAdvanced, tvStatus);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

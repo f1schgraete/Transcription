@@ -39,9 +39,12 @@ id btn_decline
 id btn_delete
 id btn_hang_up
 id btn_hash
+id btn_plus
 id btn_register
+id btn_settings
 id btn_star
 id btn_toggle_mic
+id card_settings
 id card_transcript
 id et_auth_user
 id et_display_name

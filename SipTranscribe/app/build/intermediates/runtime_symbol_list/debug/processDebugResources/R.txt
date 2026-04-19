@@ -3210,13 +3210,16 @@ int id btn_decline 0x7f090071
 int id btn_delete 0x7f090072
 int id btn_hang_up 0x7f090073
 int id btn_hash 0x7f090074
+int id btn_plus 0x7f09021a
 int id btn_register 0x7f090075
+int id btn_settings 0x7f09021b
 int id btn_star 0x7f090076
 int id btn_toggle_mic 0x7f090077
 int id buttonPanel 0x7f090078
 int id cache_measures 0x7f090079
 int id callMeasure 0x7f09007a
 int id cancel_button 0x7f09007b
+int id card_settings 0x7f09021c
 int id card_transcript 0x7f09007c
 int id carryVelocity 0x7f09007d
 int id center 0x7f09007e

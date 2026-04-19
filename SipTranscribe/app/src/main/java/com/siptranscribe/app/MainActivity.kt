@@ -57,12 +57,19 @@ class MainActivity : AppCompatActivity() {
             btn.setOnClickListener { binding.etPhone.append(digit) }
         }
 
+        binding.btnPlus.setOnClickListener { binding.etPhone.append("+") }
+
         binding.btnDelete.setOnClickListener {
             val t = binding.etPhone.text
             if (t != null && t.isNotEmpty()) t.delete(t.length - 1, t.length)
         }
         binding.btnDelete.setOnLongClickListener {
             binding.etPhone.text?.clear()
+            true
+        }
+        // Long-press 0 → + (standard phone convention)
+        binding.btn0.setOnLongClickListener {
+            binding.etPhone.append("+")
             true
         }
 
@@ -111,6 +118,13 @@ class MainActivity : AppCompatActivity() {
             makeCall(number)
         }
 
+        // Konto button (visible when registered) → re-show settings card
+        binding.btnSettings.setOnClickListener {
+            binding.cardSettings.visibility = View.VISIBLE
+            binding.btnSettings.visibility = View.GONE
+            binding.root.smoothScrollTo(0, 0)
+        }
+
         // Keep registration status label updated
         LinphoneManager.onRegistrationStateChanged = { ok, msg ->
             runOnUiThread {
@@ -118,8 +132,21 @@ class MainActivity : AppCompatActivity() {
                 binding.tvStatus.setTextColor(
                     if (ok) getColor(R.color.status_ok) else getColor(R.color.status_error)
                 )
+                updateRegistrationUI(ok)
             }
         }
+
+        // Apply initial state — service may already be registered from a previous session
+        if (LinphoneManager.isRegistered) {
+            binding.tvStatus.text = "Registriert"
+            binding.tvStatus.setTextColor(getColor(R.color.status_ok))
+        }
+        updateRegistrationUI(LinphoneManager.isRegistered)
+    }
+
+    private fun updateRegistrationUI(registered: Boolean) {
+        binding.cardSettings.visibility = if (registered) View.GONE else View.VISIBLE
+        binding.btnSettings.visibility  = if (registered) View.VISIBLE else View.GONE
     }
 
     private fun loadSettings() {

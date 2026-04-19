@@ -1,23 +1,27 @@
 [
     {
-        "merged": "com.siptranscribe.app-debug-34:/mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "com.siptranscribe.app-main-36:/mipmap-anydpi-v26/ic_launcher.xml"
+        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
     },
     {
-        "merged": "com.siptranscribe.app-debug-34:/drawable_ic_launcher_foreground.xml.flat",
-        "source": "com.siptranscribe.app-main-36:/drawable/ic_launcher_foreground.xml"
+        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\layout_activity_main.xml.flat",
+        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\layout\\activity_main.xml"
     },
     {
-        "merged": "com.siptranscribe.app-debug-34:/drawable_ic_phone.xml.flat",
-        "source": "com.siptranscribe.app-main-36:/drawable/ic_phone.xml"
+        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\drawable_ic_phone.xml.flat",
+        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\drawable\\ic_phone.xml"
     },
     {
-        "merged": "com.siptranscribe.app-debug-34:/layout_activity_call.xml.flat",
-        "source": "com.siptranscribe.app-main-36:/layout/activity_call.xml"
+        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\mipmap-anydpi-v26\\ic_launcher.xml"
     },
     {
-        "merged": "com.siptranscribe.app-debug-34:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "com.siptranscribe.app-main-36:/mipmap-anydpi-v26/ic_launcher_round.xml"
+        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\drawable_ic_launcher_foreground.xml.flat",
+        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\drawable\\ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\layout_activity_call.xml.flat",
+        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\layout\\activity_call.xml"
     },
     {
         "merged": "com.siptranscribe.app-debug-34:/layout_activity_main.xml.flat",
