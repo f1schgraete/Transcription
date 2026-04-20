@@ -4,10 +4,15 @@ import android.Manifest
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -15,11 +20,15 @@ import androidx.core.content.ContextCompat
 import com.siptranscribe.app.databinding.ActivityMainBinding
 import org.linphone.core.MediaEncryption
 import org.linphone.core.TransportType
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: SharedPreferences
+    private var testTranscriber: TranscriptionManager? = null
 
     companion object {
         const val PREFS = "sip_prefs"
@@ -34,6 +43,8 @@ class MainActivity : AppCompatActivity() {
         const val KEY_REALM = "realm"
         const val KEY_OUTBOUND_PROXY = "outbound_proxy"
         const val KEY_MEDIA_ENC = "media_enc"
+        const val KEY_AZURE_ENDPOINT = "azure_endpoint"
+        const val KEY_AZURE_KEY = "azure_key"
         private const val REQ_PERMS = 101
     }
 
@@ -90,7 +101,6 @@ class MainActivity : AppCompatActivity() {
         binding.actvTransport.setOnItemClickListener { _, _, _, _ ->
             val t = binding.actvTransport.text.toString()
             val currentPort = binding.etPort.text.toString().trim()
-            // Auto-adjust port only when it still holds a standard default
             if (currentPort == "5060" || currentPort == "5061" || currentPort.isEmpty()) {
                 binding.etPort.setText(if (t == "TLS") "5061" else "5060")
             }
@@ -104,6 +114,7 @@ class MainActivity : AppCompatActivity() {
         binding.actvMediaEnc.setAdapter(mediaEncAdapter)
 
         binding.btnRegister.setOnClickListener { saveAndRegister() }
+        setupSttTest()
 
         binding.btnCall.setOnClickListener {
             val number = binding.etPhone.text.toString().trim()
@@ -112,17 +123,16 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
             if (!LinphoneManager.isRegistered) {
-                toast("Bitte zuerst registrieren")
+                toast("Bitte zuerst Einstellungen speichern")
                 return@setOnClickListener
             }
             makeCall(number)
         }
 
-        // Konto button (visible when registered) → re-show settings card
+        // Settings button: toggles card_settings visibility
         binding.btnSettings.setOnClickListener {
-            binding.cardSettings.visibility = View.VISIBLE
-            binding.btnSettings.visibility = View.GONE
-            binding.root.smoothScrollTo(0, 0)
+            val visible = binding.cardSettings.visibility == View.VISIBLE
+            binding.cardSettings.visibility = if (visible) View.GONE else View.VISIBLE
         }
 
         // Keep registration status label updated
@@ -136,7 +146,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Apply initial state — service may already be registered from a previous session
+        // Apply initial state
         if (LinphoneManager.isRegistered) {
             binding.tvStatus.text = "Registriert"
             binding.tvStatus.setTextColor(getColor(R.color.status_ok))
@@ -144,10 +154,139 @@ class MainActivity : AppCompatActivity() {
         updateRegistrationUI(LinphoneManager.isRegistered)
     }
 
-    private fun updateRegistrationUI(registered: Boolean) {
-        binding.cardSettings.visibility = if (registered) View.GONE else View.VISIBLE
-        binding.btnSettings.visibility  = if (registered) View.VISIBLE else View.GONE
+    override fun onResume() {
+        super.onResume()
+        // Refresh call history whenever returning to this screen (e.g. after a call ends)
+        if (LinphoneManager.isRegistered) {
+            refreshCallHistory()
+        }
     }
+
+    private fun updateRegistrationUI(registered: Boolean) {
+        if (registered) {
+            binding.cardSettings.visibility = View.GONE
+            binding.cardRecentCalls.visibility = View.VISIBLE
+            refreshCallHistory()
+        } else {
+            binding.cardSettings.visibility = View.VISIBLE
+            binding.cardRecentCalls.visibility = View.GONE
+        }
+    }
+
+    private fun refreshCallHistory() {
+        val records = CallHistory.load(this)
+        binding.llCallHistory.removeAllViews()
+
+        if (records.isEmpty()) {
+            binding.tvNoCalls.visibility = View.VISIBLE
+            return
+        }
+
+        binding.tvNoCalls.visibility = View.GONE
+
+        val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val dateFmt = SimpleDateFormat("dd.MM.", Locale.getDefault())
+        val todayCal = Calendar.getInstance()
+        val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+
+        val displayRecords = records.take(10)
+        displayRecords.forEachIndexed { index, record ->
+            val row = buildHistoryRow(record, timeFmt, dateFmt, todayCal, yesterdayCal)
+            binding.llCallHistory.addView(row)
+
+            // Divider between rows
+            if (index < displayRecords.size - 1) {
+                val divider = View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, dp(1)
+                    ).also { it.setMargins(dp(60), 0, dp(16), 0) }
+                    setBackgroundColor(0x1A000000)
+                }
+                binding.llCallHistory.addView(divider)
+            }
+        }
+    }
+
+    private fun buildHistoryRow(
+        record: CallRecord,
+        timeFmt: SimpleDateFormat,
+        dateFmt: SimpleDateFormat,
+        todayCal: Calendar,
+        yesterdayCal: Calendar
+    ): LinearLayout {
+        // Direction icon and colour
+        val (iconText, iconColor) = when {
+            record.direction == CallRecord.Direction.INCOMING && record.answered ->
+                "←" to getColor(R.color.call_green)
+            record.direction == CallRecord.Direction.INCOMING && !record.answered ->
+                "✗" to getColor(R.color.call_red)
+            else ->
+                "→" to getColor(R.color.accent)
+        }
+
+        // Time label
+        val callCal = Calendar.getInstance().apply { timeInMillis = record.startTime }
+        val timeLabel = when {
+            isSameDay(callCal, todayCal)     -> timeFmt.format(record.startTime)
+            isSameDay(callCal, yesterdayCal) -> "gestern"
+            else                             -> dateFmt.format(record.startTime)
+        }
+
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            isClickable = true
+            isFocusable = true
+            // Ripple background
+            val tv = TypedValue()
+            theme.resolveAttribute(android.R.attr.selectableItemBackground, tv, true)
+            setBackgroundResource(tv.resourceId)
+            // Tap to fill dial field with caller number
+            setOnClickListener { binding.etPhone.setText(record.callerNumber) }
+        }
+
+        val iconView = TextView(this).apply {
+            text = iconText
+            textSize = 22f
+            setTextColor(iconColor)
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(dp(44), LinearLayout.LayoutParams.WRAP_CONTENT)
+            setTypeface(null, Typeface.BOLD)
+        }
+
+        val nameView = TextView(this).apply {
+            text = record.callerName
+            textSize = 20f
+            setTextColor(getColor(R.color.text_primary))
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            )
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+
+        val timeView = TextView(this).apply {
+            text = timeLabel
+            textSize = 15f
+            setTextColor(getColor(R.color.status_neutral))
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        row.addView(iconView)
+        row.addView(nameView)
+        row.addView(timeView)
+        return row
+    }
+
+    private fun isSameDay(a: Calendar, b: Calendar) =
+        a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
+        a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
+
+    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
     private fun loadSettings() {
         binding.etUsername.setText(prefs.getString(KEY_USER, ""))
@@ -161,6 +300,8 @@ class MainActivity : AppCompatActivity() {
         binding.etRealm.setText(prefs.getString(KEY_REALM, ""))
         binding.etOutboundProxy.setText(prefs.getString(KEY_OUTBOUND_PROXY, ""))
         binding.actvMediaEnc.setText(prefs.getString(KEY_MEDIA_ENC, "SRTP"), false)
+        binding.etAzureEndpoint.setText(prefs.getString(KEY_AZURE_ENDPOINT, ""))
+        binding.etAzureKey.setText(prefs.getString(KEY_AZURE_KEY, ""))
     }
 
     private fun saveAndRegister() {
@@ -204,11 +345,12 @@ class MainActivity : AppCompatActivity() {
             putString(KEY_REALM, realm ?: "")
             putString(KEY_OUTBOUND_PROXY, outboundProxy ?: "")
             putString(KEY_MEDIA_ENC, mediaEncStr)
+            putString(KEY_AZURE_ENDPOINT, binding.etAzureEndpoint.text.toString().trim())
+            putString(KEY_AZURE_KEY, binding.etAzureKey.text.toString().trim())
             apply()
         }
 
         SipService.start(this)
-        // Small delay to allow the service and Linphone core to initialise before registering
         binding.root.postDelayed({
             LinphoneManager.registerAccount(
                 user, pass, domain, display,
@@ -218,16 +360,19 @@ class MainActivity : AppCompatActivity() {
             )
         }, 800)
 
-        binding.tvStatus.text = "Registrierung laeuft..."
+        binding.tvStatus.text = "Verbindung wird hergestellt..."
         binding.tvStatus.setTextColor(getColor(R.color.status_neutral))
     }
 
     private fun makeCall(number: String) {
-        val call = LinphoneManager.makeCall(number)
+        val recordFilePath = "${filesDir.absolutePath}/call_${System.currentTimeMillis()}.wav"
+        val call = LinphoneManager.makeCall(number, recordFilePath)
         if (call != null) {
             startActivity(Intent(this, CallActivity::class.java).apply {
                 putExtra(CallActivity.EXTRA_IS_INCOMING, false)
                 putExtra(CallActivity.EXTRA_REMOTE_ADDRESS, number)
+                putExtra(CallActivity.EXTRA_REMOTE_NUMBER, number)
+                putExtra(CallActivity.EXTRA_RECORD_FILE, recordFilePath)
             })
         } else {
             toast("Anruf konnte nicht gestartet werden")
@@ -246,6 +391,56 @@ class MainActivity : AppCompatActivity() {
         }
         if (needed.isNotEmpty())
             ActivityCompat.requestPermissions(this, needed.toTypedArray(), REQ_PERMS)
+    }
+
+    /**
+     * STT test: reads {filesDir}/test.wav through the same pipeline used during a real call.
+     * Push a WAV file to the device first:
+     *   adb push your_file.wav /data/data/com.siptranscribe.app/files/test.wav
+     */
+    private fun setupSttTest() {
+        binding.btnTestStt.setOnClickListener {
+            val running = testTranscriber != null
+            if (running) {
+                testTranscriber?.stop()
+                testTranscriber = null
+                binding.btnTestStt.text = "STT Test (test.wav)"
+                return@setOnClickListener
+            }
+
+            val testFile = java.io.File(filesDir, "test.wav")
+            if (!testFile.exists()) {
+                binding.tvTestResult.visibility = View.VISIBLE
+                binding.tvTestResult.text =
+                    "Datei nicht gefunden. Bitte zuerst pushen:\n" +
+                    "adb push <datei>.wav ${testFile.absolutePath}"
+                return@setOnClickListener
+            }
+
+            binding.tvTestResult.visibility = View.VISIBLE
+            binding.tvTestResult.text = "Starte…"
+            binding.btnTestStt.text = "Test stoppen"
+
+            val t = TranscriptionManager(this).also { testTranscriber = it }
+            t.onTranscription = { text, isFinal ->
+                runOnUiThread {
+                    binding.tvTestResult.text = if (isFinal) "✓ $text" else "… $text"
+                }
+            }
+            t.onError = { msg ->
+                runOnUiThread {
+                    binding.tvTestResult.text = "Fehler: $msg"
+                    binding.btnTestStt.text = "STT Test (test.wav)"
+                    testTranscriber = null
+                }
+            }
+            t.start(testFile.absolutePath)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        testTranscriber?.stop()
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()

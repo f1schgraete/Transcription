@@ -1,372 +1,488 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  Elderly-friendly main screen.
+  - Header: app name + settings button (always visible)
+  - Scrollable area: recent calls (when registered) + settings card (when not registered)
+    + number entry + dialpad
+  - Fixed call button pinned to bottom — always reachable without scrolling
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
-    android:fillViewport="true">
+    android:orientation="vertical"
+    android:background="@color/background">
 
+    <!-- ── Header bar ──────────────────────────────────────── -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="60dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="4dp"
+        android:background="@color/surface"
+        android:elevation="4dp">
 
-        <!-- App title + account settings button (shown when registered) -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingBottom="8dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/app_name"
-                android:textSize="26sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:layout_centerInParent="true" />
-
-            <Button
-                android:id="@+id/btn_settings"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Konto"
-                android:textSize="14sp"
-                android:visibility="gone"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-        </RelativeLayout>
-
-        <!-- Registration status -->
         <TextView
-            android:id="@+id/tv_status"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/app_name"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary" />
+
+        <Button
+            android:id="@+id/btn_settings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Einstellungen"
+            android:textSize="14sp"
+            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+    </LinearLayout>
+
+    <!-- ── Registration status ─────────────────────────────── -->
+    <TextView
+        android:id="@+id/tv_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Nicht registriert"
+        android:textSize="16sp"
+        android:textColor="@color/status_neutral"
+        android:gravity="center"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:background="@color/background" />
+
+    <!-- ── Scrollable content ──────────────────────────────── -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Nicht registriert"
-            android:textSize="16sp"
-            android:textColor="@color/status_neutral"
-            android:gravity="center"
-            android:paddingBottom="12dp" />
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:maxWidth="520dp"
+            android:layout_gravity="center_horizontal">
 
-        <!-- SIP account settings card (hidden once registered) -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/card_settings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@color/surface">
-
-            <LinearLayout
+            <!-- Settings card (visible before first registration / toggled by header button) -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_settings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_marginBottom="12dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/surface">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="SIP-Zugangsdaten"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:paddingBottom="8dp" />
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Benutzername"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_username"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="text"
-                        android:textSize="18sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Passwort"
-                    android:layout_marginTop="8dp"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                    app:passwordToggleEnabled="true">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_password"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textPassword"
-                        android:textSize="18sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="SIP-Server (Domain)"
-                    android:layout_marginTop="8dp"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_domain"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textUri"
-                        android:textSize="18sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Anzeigename (optional)"
-                    android:layout_marginTop="8dp"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/et_display_name"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:inputType="textPersonName"
-                        android:textSize="18sp" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <!-- Advanced settings toggle -->
-                <Button
-                    android:id="@+id/btn_advanced"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Erweiterte Einstellungen &#x25B8;"
-                    android:textSize="14sp"
-                    style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-                <!-- Collapsible advanced settings (hidden by default) -->
                 <LinearLayout
-                    android:id="@+id/layout_advanced"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:visibility="gone">
+                    android:padding="16dp">
 
-                    <!-- Port -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="SIP-Zugangsdaten"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:paddingBottom="8dp" />
+
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Port"
-                        android:layout_marginTop="8dp"
+                        android:hint="Benutzername"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_port"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number"
-                            android:textSize="18sp" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <!-- Transport -->
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Transport"
-                        android:layout_marginTop="8dp"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-
-                        <AutoCompleteTextView
-                            android:id="@+id/actv_transport"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="none"
-                            android:textSize="18sp" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <!-- Registration expiry -->
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Registrierungs-Ablauf (Sekunden)"
-                        android:layout_marginTop="8dp"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_expires"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number"
-                            android:textSize="18sp" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <!-- Auth user ID -->
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Auth-Benutzername (optional)"
-                        android:layout_marginTop="8dp"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_auth_user"
+                            android:id="@+id/et_username"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="text"
                             android:textSize="18sp" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Realm -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Realm (optional)"
+                        android:hint="Passwort"
                         android:layout_marginTop="8dp"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        app:passwordToggleEnabled="true">
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_realm"
+                            android:id="@+id/et_password"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="text"
+                            android:inputType="textPassword"
                             android:textSize="18sp" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Outbound proxy -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Outbound-Proxy (optional)"
+                        android:hint="SIP-Server (Domain)"
                         android:layout_marginTop="8dp"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/et_outbound_proxy"
+                            android:id="@+id/et_domain"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="textUri"
                             android:textSize="18sp" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Media encryption -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Medienverschl&#xFC;sselung"
+                        android:hint="Anzeigename (optional)"
                         android:layout_marginTop="8dp"
-                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-
-                        <AutoCompleteTextView
-                            android:id="@+id/actv_media_enc"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_display_name"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="none"
+                            android:inputType="textPersonName"
                             android:textSize="18sp" />
                     </com.google.android.material.textfield.TextInputLayout>
 
+                    <!-- Advanced settings toggle -->
+                    <Button
+                        android:id="@+id/btn_advanced"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Erweiterte Einstellungen &#x25B8;"
+                        android:textSize="14sp"
+                        style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+                    <!-- Collapsible advanced settings -->
+                    <LinearLayout
+                        android:id="@+id/layout_advanced"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Port"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_port"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:textSize="18sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Transport"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                            <AutoCompleteTextView
+                                android:id="@+id/actv_transport"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="none"
+                                android:textSize="18sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Registrierungs-Ablauf (Sekunden)"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_expires"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:textSize="18sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Auth-Benutzername (optional)"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_auth_user"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="text"
+                                android:textSize="18sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Realm (optional)"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_realm"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="text"
+                                android:textSize="18sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Outbound-Proxy (optional)"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_outbound_proxy"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textUri"
+                                android:textSize="18sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Medienverschl&#xFC;sselung"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                            <AutoCompleteTextView
+                                android:id="@+id/actv_media_enc"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="none"
+                                android:textSize="18sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- ── Azure Speech ── -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Azure Speech"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            android:layout_marginTop="20dp"
+                            android:paddingBottom="2dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Endpunkt-URL"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_azure_endpoint"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textUri"
+                                android:textSize="16sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="API-Schl&#xFC;ssel"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                            app:passwordToggleEnabled="true">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_azure_key"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textPassword"
+                                android:textSize="16sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/btn_register"
+                        android:layout_width="match_parent"
+                        android:layout_height="60dp"
+                        android:layout_marginTop="12dp"
+                        android:text="Verbinden"
+                        android:textSize="20sp"
+                        android:backgroundTint="@color/accent" />
+
                 </LinearLayout>
+            </androidx.cardview.widget.CardView>
 
-                <Button
-                    android:id="@+id/btn_register"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:layout_marginTop="12dp"
-                    android:text="Registrieren"
-                    android:textSize="18sp"
-                    android:backgroundTint="@color/accent" />
-
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Dialer card -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@color/surface">
-
-            <LinearLayout
+            <!-- Recent calls card (visible when registered; populated programmatically) -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_recent_calls"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_marginBottom="12dp"
+                android:visibility="gone"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/surface">
 
-                <!-- Number display row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:orientation="vertical">
 
-                    <Button
-                        android:id="@+id/btn_plus"
-                        android:layout_width="48dp"
-                        android:layout_height="56dp"
-                        android:text="+"
-                        android:textSize="22sp"
-                        style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-                    <EditText
-                        android:id="@+id/et_phone"
-                        android:layout_width="0dp"
+                    <TextView
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:hint="+49..."
-                        android:textSize="28sp"
+                        android:text="Letzte Anrufe"
+                        android:textSize="18sp"
                         android:textStyle="bold"
-                        android:inputType="phone"
-                        android:background="@android:color/transparent"
-                        android:textColor="@color/text_primary" />
+                        android:textColor="@color/text_primary"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="8dp" />
 
-                    <Button
-                        android:id="@+id/btn_delete"
-                        android:layout_width="56dp"
-                        android:layout_height="56dp"
-                        android:text="&#x232B;"
-                        android:textSize="20sp"
-                        style="@style/Widget.MaterialComponents.Button.TextButton" />
+                    <!-- Rows added dynamically by MainActivity.refreshCallHistory() -->
+                    <LinearLayout
+                        android:id="@+id/ll_call_history"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                    <!-- Shown when history is empty -->
+                    <TextView
+                        android:id="@+id/tv_no_calls"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Noch keine Anrufe"
+                        android:textSize="16sp"
+                        android:textColor="@color/status_neutral"
+                        android:gravity="center"
+                        android:padding="24dp"
+                        android:visibility="gone" />
 
                 </LinearLayout>
+            </androidx.cardview.widget.CardView>
 
-                <!-- Dialpad 3x4 grid -->
-                <GridLayout
+            <!-- ── Phone number entry ── -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/surface">
+
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:columnCount="3"
-                    android:rowCount="4">
+                    android:orientation="vertical"
+                    android:padding="12dp">
 
-                    <Button android:id="@+id/btn1" style="@style/DialButton" android:text="1" />
-                    <Button android:id="@+id/btn2" style="@style/DialButton" android:text="2" />
-                    <Button android:id="@+id/btn3" style="@style/DialButton" android:text="3" />
-                    <Button android:id="@+id/btn4" style="@style/DialButton" android:text="4" />
-                    <Button android:id="@+id/btn5" style="@style/DialButton" android:text="5" />
-                    <Button android:id="@+id/btn6" style="@style/DialButton" android:text="6" />
-                    <Button android:id="@+id/btn7" style="@style/DialButton" android:text="7" />
-                    <Button android:id="@+id/btn8" style="@style/DialButton" android:text="8" />
-                    <Button android:id="@+id/btn9" style="@style/DialButton" android:text="9" />
-                    <Button android:id="@+id/btn_star" style="@style/DialButton" android:text="*" />
-                    <Button android:id="@+id/btn0" style="@style/DialButton" android:text="0" />
-                    <Button android:id="@+id/btn_hash" style="@style/DialButton" android:text="#" />
+                    <!-- Number display row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
-                </GridLayout>
+                        <Button
+                            android:id="@+id/btn_plus"
+                            android:layout_width="48dp"
+                            android:layout_height="60dp"
+                            android:text="+"
+                            android:textSize="24sp"
+                            style="@style/Widget.MaterialComponents.Button.TextButton" />
 
-                <!-- Call button -->
-                <Button
-                    android:id="@+id/btn_call"
-                    android:layout_width="match_parent"
-                    android:layout_height="72dp"
-                    android:layout_marginTop="12dp"
-                    android:text="Anrufen"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:backgroundTint="@color/call_green" />
+                        <EditText
+                            android:id="@+id/et_phone"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="+49..."
+                            android:textSize="32sp"
+                            android:textStyle="bold"
+                            android:inputType="phone"
+                            android:background="@android:color/transparent"
+                            android:textColor="@color/text_primary" />
 
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+                        <Button
+                            android:id="@+id/btn_delete"
+                            android:layout_width="56dp"
+                            android:layout_height="60dp"
+                            android:text="&#x232B;"
+                            android:textSize="22sp"
+                            style="@style/Widget.MaterialComponents.Button.TextButton" />
 
-    </LinearLayout>
-</ScrollView>
+                    </LinearLayout>
+
+                    <!-- Dialpad 3×4 -->
+                    <GridLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:columnCount="3"
+                        android:rowCount="4">
+
+                        <Button android:id="@+id/btn1" style="@style/DialButton" android:text="1" />
+                        <Button android:id="@+id/btn2" style="@style/DialButton" android:text="2" />
+                        <Button android:id="@+id/btn3" style="@style/DialButton" android:text="3" />
+                        <Button android:id="@+id/btn4" style="@style/DialButton" android:text="4" />
+                        <Button android:id="@+id/btn5" style="@style/DialButton" android:text="5" />
+                        <Button android:id="@+id/btn6" style="@style/DialButton" android:text="6" />
+                        <Button android:id="@+id/btn7" style="@style/DialButton" android:text="7" />
+                        <Button android:id="@+id/btn8" style="@style/DialButton" android:text="8" />
+                        <Button android:id="@+id/btn9" style="@style/DialButton" android:text="9" />
+                        <Button android:id="@+id/btn_star" style="@style/DialButton" android:text="*" />
+                        <Button android:id="@+id/btn0" style="@style/DialButton" android:text="0" />
+                        <Button android:id="@+id/btn_hash" style="@style/DialButton" android:text="#" />
+
+                    </GridLayout>
+
+                    <!-- STT developer test (small, below dialpad) -->
+                    <Button
+                        android:id="@+id/btn_test_stt"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="STT Test (test.wav)"
+                        android:textSize="13sp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                    <TextView
+                        android:id="@+id/tv_test_result"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textSize="13sp"
+                        android:textColor="@color/text_primary"
+                        android:minHeight="40dp"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ── Call button — fixed at bottom, always visible ──── -->
+    <Button
+        android:id="@+id/btn_call"
+        android:layout_width="match_parent"
+        android:layout_height="80dp"
+        android:text="Anrufen"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:backgroundTint="@color/call_green"
+        android:elevation="8dp" />
+
+</LinearLayout>

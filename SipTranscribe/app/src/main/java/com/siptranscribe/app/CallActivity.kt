@@ -1,8 +1,10 @@
 package com.siptranscribe.app
 
+import android.app.NotificationManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
@@ -18,14 +20,26 @@ class CallActivity : AppCompatActivity() {
     private var callSeconds = 0
     private var timerRunnable: Runnable? = null
     private val transcript = StringBuilder()
+    private var callEnded = false
+    private var recordingStarted = false
+    private var answered = false
+    private var callStartTime = 0L
+    private var callerName = "Unbekannt"
+    private var callerNumber = ""
 
-    // Tracks whether the local mic is intentionally enabled (Sprechen mode).
-    // Default is false: mic is muted so SpeechRecognizer can use it for STT.
-    private var micEnabled = false
+    /**
+     * Path of the WAV file Linphone is recording to.
+     * Set from the Intent extra for outgoing calls (path was embedded in params before dialling).
+     * Set at accept-time for incoming calls.
+     */
+    private var recordFilePath: String = ""
 
     companion object {
         const val EXTRA_IS_INCOMING = "is_incoming"
         const val EXTRA_REMOTE_ADDRESS = "remote_address"
+        const val EXTRA_REMOTE_NUMBER = "remote_number"
+        const val EXTRA_RECORD_FILE = "record_file"
+        private const val TAG = "CallActivity"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,11 +49,15 @@ class CallActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
-        val remote = intent.getStringExtra(EXTRA_REMOTE_ADDRESS) ?: "Unbekannt"
+        callerName = intent.getStringExtra(EXTRA_REMOTE_ADDRESS) ?: "Unbekannt"
+        callerNumber = intent.getStringExtra(EXTRA_REMOTE_NUMBER) ?: callerName
+
+        // For outgoing calls the record path was set in the call params by MainActivity.
+        recordFilePath = intent.getStringExtra(EXTRA_RECORD_FILE) ?: ""
 
         transcriber = TranscriptionManager(this)
 
-        binding.tvCaller.text = remote
+        binding.tvCaller.text = callerName
         if (isIncoming) showIncomingUI() else showCallingUI()
 
         setupButtons()
@@ -50,39 +68,34 @@ class CallActivity : AppCompatActivity() {
     private fun setupButtons() {
         binding.btnHangUp.setOnClickListener {
             LinphoneManager.hangUp()
+        }
+
+        binding.btnHangUpRinging.setOnClickListener {
+            LinphoneManager.hangUp()
+        }
+
+        binding.btnLoeschen.setOnClickListener {
             finish()
         }
 
         binding.btnAccept.setOnClickListener {
             LinphoneManager.getCurrentCall()?.let { call ->
-                LinphoneManager.acceptCall(call)
+                // For incoming calls: generate the path here so it's in the call params
+                // before acceptWithParams is called.
+                recordFilePath = "${filesDir.absolutePath}/call_${System.currentTimeMillis()}.wav"
+                LinphoneManager.acceptCall(call, recordFilePath)
             }
+            answered = true
+            callStartTime = System.currentTimeMillis()
             showActiveUI()
             startTimer()
-            beginTranscription()
         }
 
         binding.btnDecline.setOnClickListener {
+            saveCallRecord(answeredCall = false)
             LinphoneManager.getCurrentCall()?.let { LinphoneManager.declineCall(it) }
+            cancelIncomingNotification()
             finish()
-        }
-
-        // "Sprechen" toggle: enables mic so the deaf user can speak, pausing STT.
-        // A second tap reverts to transcription mode.
-        binding.btnToggleMic.setOnClickListener {
-            micEnabled = !micEnabled
-            LinphoneManager.setMicEnabled(micEnabled)
-            if (micEnabled) {
-                // Mic ON -> pause STT so STT doesn't capture the user's own voice
-                transcriber.stop()
-                binding.btnToggleMic.text = "Mikrofon AN - Tippen zum Transkribieren"
-                binding.btnToggleMic.setBackgroundColor(getColor(R.color.mic_on))
-            } else {
-                // Mic OFF -> resume STT
-                beginTranscription()
-                binding.btnToggleMic.text = "Mikrofon AUS - Tippen zum Sprechen"
-                binding.btnToggleMic.setBackgroundColor(getColor(R.color.mic_off))
-            }
         }
     }
 
@@ -91,11 +104,16 @@ class CallActivity : AppCompatActivity() {
             runOnUiThread {
                 when (state) {
                     Call.State.OutgoingRinging -> binding.tvStatus.text = "Klingelt..."
-                    Call.State.Connected,
+                    Call.State.Connected -> {
+                        showActiveUI()
+                        startTimer()
+                        // Do NOT start recording here — audio streams are not ready yet.
+                        // StreamsRunning fires immediately after and is the right place.
+                    }
                     Call.State.StreamsRunning -> {
                         showActiveUI()
                         startTimer()
-                        beginTranscription()
+                        beginRecordingAndTranscription()
                     }
                     Call.State.Error -> {
                         binding.tvStatus.text = "Fehler beim Anruf"
@@ -112,12 +130,10 @@ class CallActivity : AppCompatActivity() {
     private fun setupTranscriber() {
         transcriber.onTranscription = { text, isFinal ->
             runOnUiThread {
-                // Always show the latest partial or final result in the live area
                 binding.tvLive.text = text
                 if (isFinal && text.isNotBlank()) {
                     transcript.append(text).append(" ")
                     binding.tvHistory.text = transcript.toString()
-                    // Auto-scroll to the bottom
                     binding.scrollHistory.post {
                         binding.scrollHistory.fullScroll(View.FOCUS_DOWN)
                     }
@@ -131,24 +147,66 @@ class CallActivity : AppCompatActivity() {
     }
 
     /**
-     * Prepares the audio pipeline for transcription:
-     * 1. Mutes the Linphone mic so the microphone hardware is free.
-     * 2. Routes call audio to the loudspeaker so the mic can pick it up.
-     * 3. Starts the SpeechRecognizer loop.
+     * Called once when StreamsRunning fires. The record file path was embedded in the call
+     * params before the call was accepted/initiated, so Linphone already knows where to write.
+     * We just call startRecording() and start reading the file.
      */
-    private fun beginTranscription() {
-        micEnabled = false
-        LinphoneManager.setMicEnabled(false)
-        LinphoneManager.routeToSpeaker()
-        binding.btnToggleMic.text = "Mikrofon AUS - Tippen zum Sprechen"
-        binding.btnToggleMic.setBackgroundColor(getColor(R.color.mic_off))
-        transcriber.start()
+    private fun beginRecordingAndTranscription() {
+        if (recordingStarted) {
+            Log.d(TAG, "beginRecordingAndTranscription: already started, skipping")
+            return
+        }
+        if (recordFilePath.isBlank()) {
+            Log.e(TAG, "beginRecordingAndTranscription: recordFilePath is empty")
+            binding.tvStatus.text = "Aufnahmepfad fehlt"
+            return
+        }
+        recordingStarted = true
+        answered = true
+        if (callStartTime == 0L) callStartTime = System.currentTimeMillis()
+        Log.i(TAG, "beginRecordingAndTranscription: $recordFilePath")
+        LinphoneManager.startCallRecording()
+        transcriber.start(recordFilePath)
     }
 
     private fun endCall() {
+        if (callEnded) return
+        callEnded = true
+        LinphoneManager.stopCallRecording()
         transcriber.stop()
         stopTimer()
-        finish()
+        saveCallRecord(answeredCall = answered)
+        cancelIncomingNotification()
+        binding.tvStatus.text = "Anruf beendet"
+        binding.layoutCalling.visibility = View.GONE
+        binding.layoutIncoming.visibility = View.GONE
+        binding.btnHangUp.visibility = View.GONE
+        binding.btnLoeschen.visibility = View.VISIBLE
+        binding.layoutActive.visibility = View.VISIBLE
+    }
+
+    private fun saveCallRecord(answeredCall: Boolean) {
+        val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
+        val duration = if (callStartTime > 0L) {
+            ((System.currentTimeMillis() - callStartTime) / 1000).toInt()
+        } else {
+            0
+        }
+        val record = CallRecord(
+            id = System.currentTimeMillis(),
+            direction = if (isIncoming) CallRecord.Direction.INCOMING else CallRecord.Direction.OUTGOING,
+            callerName = callerName,
+            callerNumber = callerNumber.ifBlank { callerName },
+            startTime = if (callStartTime > 0L) callStartTime else System.currentTimeMillis(),
+            durationSeconds = duration,
+            answered = answeredCall
+        )
+        CallHistory.add(this, record)
+    }
+
+    private fun cancelIncomingNotification() {
+        getSystemService(NotificationManager::class.java)
+            .cancel(SipService.INCOMING_CALL_NOTIF_ID)
     }
 
     private fun showIncomingUI() {
@@ -158,13 +216,15 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun showCallingUI() {
+        binding.layoutCalling.visibility = View.VISIBLE
         binding.layoutIncoming.visibility = View.GONE
-        binding.layoutActive.visibility = View.VISIBLE
+        binding.layoutActive.visibility = View.GONE
         binding.tvStatus.text = "Verbinde..."
     }
 
     private fun showActiveUI() {
-        if (binding.layoutActive.visibility == View.VISIBLE) return  // already shown
+        if (binding.layoutActive.visibility == View.VISIBLE) return
+        binding.layoutCalling.visibility = View.GONE
         binding.layoutIncoming.visibility = View.GONE
         binding.layoutActive.visibility = View.VISIBLE
         binding.tvStatus.text = "Aktiver Anruf"
@@ -193,5 +253,6 @@ class CallActivity : AppCompatActivity() {
         transcriber.stop()
         stopTimer()
         LinphoneManager.onCallStateChanged = null
+        cancelIncomingNotification()
     }
 }

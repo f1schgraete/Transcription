@@ -1,46 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tablet call screen (sw600dp+).
+  Same structure and IDs as the phone layout; larger text, more padding, bigger buttons.
+-->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/call_background"
-    android:padding="16dp">
+    android:padding="24dp">
 
-    <!-- Caller name / number — very large for elderly readability -->
+    <!-- Caller name -->
     <TextView
         android:id="@+id/tv_caller"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:textSize="36sp"
+        android:textSize="44sp"
         android:textStyle="bold"
         android:textColor="@color/text_on_dark"
         android:gravity="center"
-        android:paddingTop="24dp"
+        android:paddingTop="32dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Status (Verbinde / Klingelt / Aktiver Anruf) -->
+    <!-- Status -->
     <TextView
         android:id="@+id/tv_status"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:textSize="20sp"
+        android:textSize="24sp"
         android:textColor="@color/text_on_dark_secondary"
         android:gravity="center"
-        android:paddingTop="6dp"
+        android:paddingTop="8dp"
         app:layout_constraintTop_toBottomOf="@id/tv_caller"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Call duration timer -->
+    <!-- Timer -->
     <TextView
         android:id="@+id/tv_duration"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="00:00"
-        android:textSize="22sp"
+        android:textSize="28sp"
         android:textColor="@color/text_on_dark_secondary"
         android:gravity="center"
         android:fontFamily="monospace"
@@ -48,7 +52,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- ======= OUTGOING RINGING BUTTONS ======= -->
+    <!-- ── Outgoing ringing buttons ── -->
     <LinearLayout
         android:id="@+id/layout_calling"
         android:layout_width="0dp"
@@ -56,7 +60,7 @@
         android:orientation="vertical"
         android:gravity="center"
         android:visibility="gone"
-        android:paddingBottom="32dp"
+        android:paddingBottom="48dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -64,19 +68,15 @@
         <Button
             android:id="@+id/btn_hang_up_ringing"
             android:layout_width="match_parent"
-            android:layout_height="88dp"
+            android:layout_height="100dp"
             android:text="Auflegen"
-            android:textSize="24sp"
+            android:textSize="28sp"
             android:textStyle="bold"
             android:backgroundTint="@color/call_red" />
 
     </LinearLayout>
 
-    <!-- ======= INCOMING CALL BUTTONS ======= -->
-    <!--
-        Vertical layout: green Annehmen on top (larger, more prominent),
-        red Ablehnen below (smaller). This minimises accidental hang-ups.
-    -->
+    <!-- ── Incoming call buttons ── -->
     <LinearLayout
         android:id="@+id/layout_incoming"
         android:layout_width="0dp"
@@ -84,34 +84,32 @@
         android:orientation="vertical"
         android:gravity="center"
         android:visibility="gone"
-        android:paddingBottom="32dp"
+        android:paddingBottom="48dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Accept: full width, very tall, bright green — hardest to miss -->
         <Button
             android:id="@+id/btn_accept"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="120dp"
             android:text="Annehmen"
-            android:textSize="28sp"
+            android:textSize="34sp"
             android:textStyle="bold"
             android:backgroundTint="@color/call_green"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="20dp" />
 
-        <!-- Decline: narrower, shorter, less prominent -->
         <Button
             android:id="@+id/btn_decline"
-            android:layout_width="220dp"
-            android:layout_height="72dp"
+            android:layout_width="260dp"
+            android:layout_height="88dp"
             android:text="Ablehnen"
-            android:textSize="20sp"
+            android:textSize="24sp"
             android:backgroundTint="@color/call_red" />
 
     </LinearLayout>
 
-    <!-- ======= ACTIVE CALL BUTTONS ======= -->
+    <!-- ── Active call buttons ── -->
     <LinearLayout
         android:id="@+id/layout_active"
         android:layout_width="0dp"
@@ -119,7 +117,7 @@
         android:orientation="vertical"
         android:gravity="center"
         android:visibility="gone"
-        android:paddingBottom="24dp"
+        android:paddingBottom="36dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -127,25 +125,24 @@
         <Button
             android:id="@+id/btn_hang_up"
             android:layout_width="match_parent"
-            android:layout_height="88dp"
+            android:layout_height="100dp"
             android:text="Auflegen"
-            android:textSize="24sp"
+            android:textSize="28sp"
             android:textStyle="bold"
             android:backgroundTint="@color/call_red" />
 
-        <!-- Shown after call ends instead of Auflegen -->
         <Button
             android:id="@+id/btn_loeschen"
             android:layout_width="match_parent"
-            android:layout_height="80dp"
+            android:layout_height="88dp"
             android:text="Schlie&#xDF;en"
-            android:textSize="22sp"
+            android:textSize="24sp"
             android:visibility="gone"
             android:backgroundTint="@color/mic_off" />
 
     </LinearLayout>
 
-    <!-- Barrier sits at the top of whichever button layout is currently visible. -->
+    <!-- Barrier at top of whichever button layout is visible -->
     <androidx.constraintlayout.widget.Barrier
         android:id="@+id/barrier_buttons"
         android:layout_width="wrap_content"
@@ -153,14 +150,14 @@
         app:barrierDirection="top"
         app:constraint_referenced_ids="layout_calling,layout_incoming,layout_active" />
 
-    <!-- ======= TRANSCRIPTION AREA (fills remaining vertical space) ======= -->
+    <!-- ── Transcription card (fills the middle) ── -->
     <androidx.cardview.widget.CardView
         android:id="@+id/card_transcript"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="8dp"
-        app:cardCornerRadius="12dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="12dp"
+        app:cardCornerRadius="16dp"
         app:cardBackgroundColor="@color/transcript_bg"
         app:cardElevation="4dp"
         app:layout_constraintTop_toBottomOf="@id/tv_duration"
@@ -177,26 +174,27 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Untertitel"
-                android:textSize="13sp"
+                android:textSize="15sp"
                 android:textColor="#888888"
                 android:gravity="center"
-                android:paddingTop="8dp"
+                android:paddingTop="10dp"
                 android:paddingBottom="4dp" />
 
+            <!-- Scrollable transcript history -->
             <ScrollView
                 android:id="@+id/scroll_history"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:padding="12dp">
+                android:padding="16dp">
 
                 <TextView
                     android:id="@+id/tv_history"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="22sp"
+                    android:textSize="26sp"
                     android:textColor="@color/text_primary"
-                    android:lineSpacingMultiplier="1.4" />
+                    android:lineSpacingMultiplier="1.5" />
 
             </ScrollView>
 
@@ -205,11 +203,11 @@
                 android:id="@+id/tv_live"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="26sp"
+                android:textSize="32sp"
                 android:textStyle="bold"
                 android:textColor="@color/accent"
-                android:padding="12dp"
-                android:minHeight="64dp"
+                android:padding="16dp"
+                android:minHeight="80dp"
                 android:gravity="center" />
 
         </LinearLayout>
