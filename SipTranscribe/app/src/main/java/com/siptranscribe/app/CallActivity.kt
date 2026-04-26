@@ -1,9 +1,13 @@
 package com.siptranscribe.app
 
 import android.app.NotificationManager
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -20,6 +24,7 @@ class CallActivity : AppCompatActivity() {
     private var callSeconds = 0
     private var timerRunnable: Runnable? = null
     private val transcript = StringBuilder()
+    private var partial: String = ""
     private var callEnded = false
     private var recordingStarted = false
     private var answered = false
@@ -130,19 +135,40 @@ class CallActivity : AppCompatActivity() {
     private fun setupTranscriber() {
         transcriber.onTranscription = { text, isFinal ->
             runOnUiThread {
-                binding.tvLive.text = text
-                if (isFinal && text.isNotBlank()) {
-                    transcript.append(text).append(" ")
-                    binding.tvHistory.text = transcript.toString()
-                    binding.scrollHistory.post {
-                        binding.scrollHistory.fullScroll(View.FOCUS_DOWN)
-                    }
-                    binding.tvLive.text = ""
+                if (isFinal) {
+                    if (text.isNotBlank()) transcript.append(text).append(' ')
+                    partial = ""
+                } else {
+                    partial = text
                 }
+                renderTranscript()
             }
         }
         transcriber.onError = { msg ->
             runOnUiThread { binding.tvStatus.text = msg }
+        }
+    }
+
+    /**
+     * Renders the finalised text in the primary colour followed by the in-progress
+     * partial in a faded grey, all in the same TextView. New utterances always
+     * appear at the same line position — no jumping between zones.
+     */
+    private fun renderTranscript() {
+        val builder = SpannableStringBuilder(transcript)
+        if (partial.isNotEmpty()) {
+            val start = builder.length
+            builder.append(partial)
+            builder.setSpan(
+                ForegroundColorSpan(Color.parseColor("#888888")),
+                start,
+                builder.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        binding.tvHistory.text = builder
+        binding.scrollHistory.post {
+            binding.scrollHistory.fullScroll(View.FOCUS_DOWN)
         }
     }
 
@@ -164,9 +190,10 @@ class CallActivity : AppCompatActivity() {
         recordingStarted = true
         answered = true
         if (callStartTime == 0L) callStartTime = System.currentTimeMillis()
-        Log.i(TAG, "beginRecordingAndTranscription: $recordFilePath")
+        val sampleRate = LinphoneManager.getCurrentCallSampleRate()
+        Log.i(TAG, "beginRecordingAndTranscription: $recordFilePath @ $sampleRate Hz")
         LinphoneManager.startCallRecording()
-        transcriber.start(recordFilePath)
+        transcriber.start(recordFilePath, sampleRate)
     }
 
     private fun endCall() {

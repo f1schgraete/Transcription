@@ -434,7 +434,14 @@ class MainActivity : AppCompatActivity() {
                     testTranscriber = null
                 }
             }
-            t.start(testFile.absolutePath)
+            val sampleRate = readWavSampleRate(testFile)
+            if (sampleRate <= 0) {
+                binding.tvTestResult.text = "Ungültiger WAV-Header in ${testFile.name}"
+                binding.btnTestStt.text = "STT Test (test.wav)"
+                testTranscriber = null
+                return@setOnClickListener
+            }
+            t.start(testFile.absolutePath, sampleRate)
         }
     }
 
@@ -444,4 +451,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+
+    private fun readWavSampleRate(file: java.io.File): Int = try {
+        java.io.RandomAccessFile(file, "r").use { raf ->
+            if (raf.length() < 28) return -1
+            raf.seek(24)
+            val b = ByteArray(4).also { raf.readFully(it) }
+            java.nio.ByteBuffer.wrap(b).order(java.nio.ByteOrder.LITTLE_ENDIAN).int
+        }
+    } catch (_: Exception) {
+        -1
+    }
 }

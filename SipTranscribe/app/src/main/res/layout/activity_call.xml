@@ -168,51 +168,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <LinearLayout
+        <ScrollView
+            android:id="@+id/scroll_history"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:padding="20dp">
 
             <TextView
+                android:id="@+id/tv_history"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Untertitel"
-                android:textSize="13sp"
-                android:textColor="#888888"
-                android:gravity="center"
-                android:paddingTop="8dp"
-                android:paddingBottom="4dp" />
+                android:textSize="28sp"
+                android:textColor="@color/text_primary"
+                android:lineSpacingMultiplier="1.5" />
 
-            <ScrollView
-                android:id="@+id/scroll_history"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:padding="12dp">
-
-                <TextView
-                    android:id="@+id/tv_history"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textSize="22sp"
-                    android:textColor="@color/text_primary"
-                    android:lineSpacingMultiplier="1.4" />
-
-            </ScrollView>
-
-            <!-- Live partial result -->
-            <TextView
-                android:id="@+id/tv_live"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="26sp"
-                android:textStyle="bold"
-                android:textColor="@color/accent"
-                android:padding="12dp"
-                android:minHeight="64dp"
-                android:gravity="center" />
-
-        </LinearLayout>
+        </ScrollView>
     </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

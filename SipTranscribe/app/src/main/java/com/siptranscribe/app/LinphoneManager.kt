@@ -134,7 +134,7 @@ object LinphoneManager {
      * Dial a number. Accepts plain digits, +49..., or sip: URIs.
      * Automatically routes to the registered domain.
      */
-    fun makeCall(number: String): Call? {
+    fun makeCall(number: String, recordFilePath: String = ""): Call? {
         val c = core ?: return null
         val clean = number.trim().replace(" ", "").replace("-", "")
 
@@ -153,16 +153,17 @@ object LinphoneManager {
         val params = c.createCallParams(null) ?: return null
         params.mediaEncryption = callMediaEncryption
         params.isVideoEnabled = false
+        if (recordFilePath.isNotBlank()) params.recordFile = recordFilePath
 
         return c.inviteAddressWithParams(remoteAddress, params)
     }
 
-    fun acceptCall(call: Call) {
+    fun acceptCall(call: Call, recordFilePath: String = "") {
         val c = core ?: return
         val params = c.createCallParams(call) ?: return
         params.isVideoEnabled = false
+        if (recordFilePath.isNotBlank()) params.recordFile = recordFilePath
         call.acceptWithParams(params)
-        routeToSpeaker()
     }
 
     fun hangUp() {
@@ -173,20 +174,25 @@ object LinphoneManager {
         call.decline(Reason.Declined)
     }
 
-    /**
-     * Enable or disable the local microphone.
-     * Set to false so that the system microphone is free for SpeechRecognizer
-     * to capture the remote party's voice coming through the loudspeaker.
-     */
+    /** Enable or disable the local microphone. */
     fun setMicEnabled(enabled: Boolean) {
+        Log.d(TAG, "setMicEnabled($enabled)")
         core?.isMicEnabled = enabled
     }
 
     fun routeToSpeaker() {
-        val c = core ?: return
-        c.audioDevices
-            .firstOrNull { it.type == AudioDevice.Type.Speaker }
-            ?.let { c.outputAudioDevice = it }
+        val c = core ?: run {
+            Log.w(TAG, "routeToSpeaker: core is null")
+            return
+        }
+        val speaker = c.audioDevices.firstOrNull { it.type == AudioDevice.Type.Speaker }
+        if (speaker != null) {
+            Log.i(TAG, "routeToSpeaker: switching output to ${speaker.deviceName}")
+            c.outputAudioDevice = speaker
+        } else {
+            Log.w(TAG, "routeToSpeaker: no Speaker device found among: " +
+                c.audioDevices.joinToString { "${it.deviceName}(${it.type})" })
+        }
     }
 
     fun routeToEarpiece() {
@@ -195,6 +201,32 @@ object LinphoneManager {
             .firstOrNull { it.type == AudioDevice.Type.Earpiece }
             ?.let { c.outputAudioDevice = it }
     }
+
+    /**
+     * Starts recording the active call. The record file path must already be set
+     * in the call params (via [makeCall] or [acceptCall]). Call this from StreamsRunning.
+     */
+    fun startCallRecording() {
+        val call = core?.currentCall ?: run { Log.w(TAG, "startCallRecording: no active call"); return }
+        call.startRecording()
+        Log.i(TAG, "startCallRecording: recording started")
+    }
+
+    fun stopCallRecording() {
+        core?.currentCall?.stopRecording()
+        Log.i(TAG, "stopCallRecording")
+    }
+
+    /**
+     * Sample rate of the negotiated audio codec on the active call (e.g. 8000 for G.711,
+     * 16000 for G.722). This is the rate Linphone writes into the recorded WAV file —
+     * but the WAV header isn't finalised until [stopCallRecording], so callers that need
+     * the rate during the call must read it from here.
+     *
+     * Falls back to 8000 Hz when no call is active or the codec is not yet negotiated.
+     */
+    fun getCurrentCallSampleRate(): Int =
+        core?.currentCall?.currentParams?.usedAudioPayloadType?.clockRate ?: 8000
 
     fun getCurrentCall(): Call? = core?.currentCall
 

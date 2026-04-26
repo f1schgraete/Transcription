@@ -42,4 +42,6 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.lifecycle:lifecycle-service:2.7.0'
+    // Azure Cognitive Services Speech SDK — streams PCM to Azure via PushAudioInputStream.
+    implementation 'com.microsoft.cognitiveservices.speech:client-sdk:1.37.0'
 }

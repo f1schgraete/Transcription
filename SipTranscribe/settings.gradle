@@ -11,6 +11,7 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://download.linphone.org/maven_repository/") }
+        maven { url = uri("https://csspeechstorage.blob.core.windows.net/maven/") }
     }
 }
 rootProject.name = "SipTranscribe"
