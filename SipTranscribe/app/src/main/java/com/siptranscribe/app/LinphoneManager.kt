@@ -23,7 +23,14 @@ object LinphoneManager {
         if (core != null) return
 
         val factory = Factory.instance()
-        factory.setDebugMode(BuildConfig.DEBUG, TAG)
+        // setDebugMode is deprecated and no longer pipes to logcat on its own —
+        // enable logcat output explicitly and crank to Debug so belle-sip / TLS
+        // errors surface (default is Message which only logs state changes).
+        factory.setLoggerDomain(TAG)
+        if (BuildConfig.DEBUG) {
+            factory.enableLogcatLogs(true)
+            factory.loggingService.setLogLevel(LogLevel.Debug)
+        }
 
         core = factory.createCore(null, null, context.applicationContext)
         // Deutsche Telekom's SIP certificate may not be in Linphone's bundled CA store;

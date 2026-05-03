@@ -88,25 +88,44 @@ class AzureSttEngine(
     }
 
     /**
-     * The Speech SDK needs either a region (it builds the WSS URL itself) or a
-     * full `wss://…/speech/recognition/conversation/cognitiveservices/v1` URL.
-     * Users typically paste the resource URL from the Azure portal, e.g.
-     * `https://swedencentral.stt.speech.microsoft.com` — that's neither, so we
-     * extract the region from `<region>.stt.speech.microsoft.com` and use
-     * [SpeechConfig.fromSubscription]. Anything else is treated as a raw endpoint
-     * with the scheme normalised to `wss://`.
+     * The Speech SDK accepts a region (it builds the WSS URL itself) or a full
+     * WSS URL. The user pastes one of:
+     *   - https://<region>.stt.speech.microsoft.com         (legacy Speech-only)
+     *   - https://<resource>.cognitiveservices.azure.com    (multi-service / Foundry)
+     *   - https://<resource>.services.ai.azure.com          (newer AI Services)
+     *   - any other host                                    (custom)
+     *
+     * The first form gives us a region directly. The unified Foundry/AI Services
+     * hosts expose Speech under `/stt/speech/universal/v2` over WSS. Anything
+     * else falls through with a scheme-normalised endpoint.
      */
     private fun buildSpeechConfig(raw: String, key: String): SpeechConfig? {
         val trimmed = raw.trim().trimEnd('/')
-        val hostMatch = Regex(
+
+        Regex(
             "^(?:https?://|wss?://)?([a-z0-9-]+)\\.stt\\.speech\\.microsoft\\.com/?$",
             RegexOption.IGNORE_CASE
-        ).matchEntire(trimmed)
-        if (hostMatch != null) {
-            val region = hostMatch.groupValues[1].lowercase()
+        ).matchEntire(trimmed)?.let { match ->
+            val region = match.groupValues[1].lowercase()
             Log.i(TAG, "Using fromSubscription with region=$region")
             return SpeechConfig.fromSubscription(key, region)
         }
+
+        Regex(
+            "^(?:https?://|wss?://)?([a-z0-9-]+\\.(?:cognitiveservices\\.azure\\.com|services\\.ai\\.azure\\.com))/?$",
+            RegexOption.IGNORE_CASE
+        ).matchEntire(trimmed)?.let { match ->
+            val host = match.groupValues[1].lowercase()
+            val wsUrl = "wss://$host/stt/speech/universal/v2"
+            Log.i(TAG, "Using fromEndpoint with unified host: $wsUrl")
+            return try {
+                SpeechConfig.fromEndpoint(URI(wsUrl), key)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to build SpeechConfig from $wsUrl", e)
+                null
+            }
+        }
+
         val wsEndpoint = trimmed
             .replaceFirst(Regex("^https://", RegexOption.IGNORE_CASE), "wss://")
             .replaceFirst(Regex("^http://", RegexOption.IGNORE_CASE), "ws://")

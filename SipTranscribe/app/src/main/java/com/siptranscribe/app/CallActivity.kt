@@ -210,6 +210,95 @@ class CallActivity : AppCompatActivity() {
         binding.btnHangUp.visibility = View.GONE
         binding.btnLoeschen.visibility = View.VISIBLE
         binding.layoutActive.visibility = View.VISIBLE
+        runAnalysisIfPossible()
+    }
+
+    /**
+     * Fires Azure chat completions over the finalised transcript. Skipped silently
+     * when the deployment isn't configured or the transcript is too short to be
+     * meaningful. Result is appended at the bottom of the transcript view.
+     */
+    private fun runAnalysisIfPossible() {
+        val text = transcript.toString().trim()
+        if (text.length < 30) {
+            Log.d(TAG, "Skipping analysis: transcript too short")
+            return
+        }
+        val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+        val endpoint = prefs.getString(MainActivity.KEY_AZURE_ENDPOINT, "")?.trim().orEmpty()
+        val key = prefs.getString(MainActivity.KEY_AZURE_KEY, "")?.trim().orEmpty()
+        val deployment = prefs.getString(MainActivity.KEY_AZURE_DEPLOYMENT, "")?.trim().orEmpty()
+        if (endpoint.isBlank() || key.isBlank() || deployment.isBlank()) {
+            Log.i(TAG, "Skipping analysis: chat deployment not configured")
+            return
+        }
+
+        appendAnalysisStatus("Analyse wird erstellt …")
+        Thread({
+            try {
+                val result = ConversationAnalyzer(endpoint, key, deployment).analyze(text)
+                handler.post { showAnalysis(result) }
+            } catch (e: Exception) {
+                Log.e(TAG, "Analysis failed", e)
+                handler.post {
+                    appendAnalysisStatus("Analyse fehlgeschlagen: ${e.message}")
+                }
+            }
+        }, "ConversationAnalyzer").start()
+    }
+
+    /**
+     * Tablet layout has a dedicated summary card; phone layout reuses the transcript
+     * view (the summary just appends at the bottom).
+     */
+    private val hasSummaryPane: Boolean get() = binding.tvSummary != null
+
+    private fun appendAnalysisStatus(msg: String) {
+        if (hasSummaryPane) {
+            binding.cardSummary?.visibility = View.VISIBLE
+            binding.tvSummary?.text = msg
+        } else {
+            if (transcript.isNotEmpty() && transcript.last() != '\n') transcript.append('\n')
+            transcript.append('\n').append(msg).append('\n')
+            partial = ""
+            renderTranscript()
+        }
+    }
+
+    private fun showAnalysis(r: ConversationAnalyzer.Result) {
+        val text = formatSummary(r)
+        if (hasSummaryPane) {
+            binding.cardSummary?.visibility = View.VISIBLE
+            binding.tvSummary?.text = text
+        } else {
+            // Replace the "Analyse wird erstellt …" placeholder appended earlier.
+            val placeholder = "\n\nAnalyse wird erstellt …\n"
+            val idx = transcript.lastIndexOf(placeholder)
+            if (idx >= 0) transcript.setLength(idx)
+            transcript.append('\n').append("──────────────").append('\n')
+            transcript.append(text)
+            partial = ""
+            renderTranscript()
+        }
+    }
+
+    private fun formatSummary(r: ConversationAnalyzer.Result): String = buildString {
+        append("Anrufer: ").append(r.callerName ?: "—").append('\n')
+        append("Thema: ").append(r.topic ?: "—").append('\n')
+        if (r.importantPoints.isNotEmpty()) {
+            append('\n').append("Wichtige Punkte:").append('\n')
+            r.importantPoints.forEachIndexed { i, p ->
+                append(i + 1).append(") ").append(p).append('\n')
+            }
+        }
+        if (r.dates.isNotEmpty()) {
+            append('\n').append("Termine:").append('\n')
+            r.dates.forEach { append("• ").append(it).append('\n') }
+        }
+        if (r.todos.isNotEmpty()) {
+            append('\n').append("Aufgaben:").append('\n')
+            r.todos.forEach { append("• ").append(it).append('\n') }
+        }
     }
 
     private fun saveCallRecord(answeredCall: Boolean) {

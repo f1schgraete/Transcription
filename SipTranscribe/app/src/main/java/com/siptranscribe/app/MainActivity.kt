@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         const val KEY_MEDIA_ENC = "media_enc"
         const val KEY_AZURE_ENDPOINT = "azure_endpoint"
         const val KEY_AZURE_KEY = "azure_key"
+        const val KEY_AZURE_DEPLOYMENT = "azure_deployment"
         private const val REQ_PERMS = 101
     }
 
@@ -302,6 +303,7 @@ class MainActivity : AppCompatActivity() {
         binding.actvMediaEnc.setText(prefs.getString(KEY_MEDIA_ENC, "SRTP"), false)
         binding.etAzureEndpoint.setText(prefs.getString(KEY_AZURE_ENDPOINT, ""))
         binding.etAzureKey.setText(prefs.getString(KEY_AZURE_KEY, ""))
+        binding.etAzureDeployment.setText(prefs.getString(KEY_AZURE_DEPLOYMENT, ""))
     }
 
     private fun saveAndRegister() {
@@ -347,6 +349,7 @@ class MainActivity : AppCompatActivity() {
             putString(KEY_MEDIA_ENC, mediaEncStr)
             putString(KEY_AZURE_ENDPOINT, binding.etAzureEndpoint.text.toString().trim())
             putString(KEY_AZURE_KEY, binding.etAzureKey.text.toString().trim())
+            putString(KEY_AZURE_DEPLOYMENT, binding.etAzureDeployment.text.toString().trim())
             apply()
         }
 
