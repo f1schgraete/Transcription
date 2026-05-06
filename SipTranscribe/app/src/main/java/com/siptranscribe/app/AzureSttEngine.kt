@@ -3,10 +3,10 @@ package com.siptranscribe.app
 import android.util.Log
 import com.microsoft.cognitiveservices.speech.CancellationReason
 import com.microsoft.cognitiveservices.speech.SpeechConfig
-import com.microsoft.cognitiveservices.speech.SpeechRecognizer
 import com.microsoft.cognitiveservices.speech.audio.AudioConfig
 import com.microsoft.cognitiveservices.speech.audio.AudioStreamFormat
 import com.microsoft.cognitiveservices.speech.audio.PushAudioInputStream
+import com.microsoft.cognitiveservices.speech.transcription.ConversationTranscriber
 import java.net.URI
 
 /**
@@ -28,11 +28,11 @@ class AzureSttEngine(
         private const val LANGUAGE = "de-DE"
     }
 
-    override var onResult: ((String, Boolean) -> Unit)? = null
+    override var onResult: ((String, Boolean, String?) -> Unit)? = null
     override var onError: ((String) -> Unit)? = null
 
     @Volatile private var pushStream: PushAudioInputStream? = null
-    @Volatile private var recognizer: SpeechRecognizer? = null
+    @Volatile private var transcriber: ConversationTranscriber? = null
 
     override fun prepare(sampleRate: Int) {
         if (endpoint.isBlank() || apiKey.isBlank()) {
@@ -52,23 +52,25 @@ class AzureSttEngine(
         speechConfig.speechRecognitionLanguage = LANGUAGE
 
         val audioConfig = AudioConfig.fromStreamInput(stream)
-        val rec = SpeechRecognizer(speechConfig, audioConfig).also { recognizer = it }
+        val tx = ConversationTranscriber(speechConfig, audioConfig).also { transcriber = it }
 
-        rec.recognizing.addEventListener { _, e ->
+        tx.transcribing.addEventListener { _, e ->
             val text = e.result.text
+            val speakerId = e.result.speakerId
             if (text.isNotBlank()) {
-                Log.d(TAG, "Partial: \"$text\"")
-                onResult?.invoke(text, false)
+                Log.d(TAG, "Partial[$speakerId]: \"$text\"")
+                onResult?.invoke(text, false, speakerId)
             }
         }
-        rec.recognized.addEventListener { _, e ->
+        tx.transcribed.addEventListener { _, e ->
             val text = e.result.text
+            val speakerId = e.result.speakerId
             if (text.isNotBlank()) {
-                Log.i(TAG, "Final: \"$text\"")
-                onResult?.invoke(text, true)
+                Log.i(TAG, "Final[$speakerId]: \"$text\"")
+                onResult?.invoke(text, true, speakerId)
             }
         }
-        rec.canceled.addEventListener { _, e ->
+        tx.canceled.addEventListener { _, e ->
             if (e.reason == CancellationReason.Error) {
                 val msg = "Azure STT Fehler ${e.errorCode}: ${e.errorDetails}"
                 Log.e(TAG, msg)
@@ -78,8 +80,8 @@ class AzureSttEngine(
             }
         }
 
-        rec.startContinuousRecognitionAsync()
-        Log.i(TAG, "continuous recognition started")
+        tx.startTranscribingAsync()
+        Log.i(TAG, "conversation transcription started")
     }
 
     override fun feed(pcm: ByteArray, length: Int) {
@@ -141,15 +143,15 @@ class AzureSttEngine(
     override fun stop() {
         Log.i(TAG, "stop()")
         val ps = pushStream
-        val rec = recognizer
+        val rec = transcriber
         pushStream = null
-        recognizer = null
+        transcriber = null
 
         // Signal end-of-stream and stop on a background thread to avoid blocking the caller.
         Thread({
             try {
                 ps?.close()                                // signals EOF to Azure
-                rec?.stopContinuousRecognitionAsync()?.get()
+                rec?.stopTranscribingAsync()?.get()
                 rec?.close()
             } catch (e: Exception) {
                 Log.w(TAG, "Error during stop", e)

@@ -24,11 +24,24 @@ class SipService : Service() {
         private const val NOTIFICATION_ID = 1
         const val INCOMING_CALL_NOTIF_ID = 2
 
+        const val ACTION_LOGOUT = "com.siptranscribe.app.action.LOGOUT"
+
         fun start(context: Context) =
             context.startForegroundService(Intent(context, SipService::class.java))
 
         fun stop(context: Context) =
             context.stopService(Intent(context, SipService::class.java))
+
+        /**
+         * Cleanly tear the service down: send SIP UNREGISTER, then stop the
+         * foreground service. The Android OS won't auto-restart a service after
+         * an explicit stopSelf, so this is the way to actually log out.
+         */
+        fun logoutAndStop(context: Context) {
+            context.startService(Intent(context, SipService::class.java).apply {
+                action = ACTION_LOGOUT
+            })
+        }
     }
 
     override fun onCreate() {
@@ -67,7 +80,17 @@ class SipService : Service() {
         LinphoneManager.getCore()?.addListener(coreListener!!)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_LOGOUT) {
+            LinphoneManager.unregisterAndDestroy()
+            getSystemService(NotificationManager::class.java)
+                .cancel(INCOMING_CALL_NOTIF_ID)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        return START_STICKY
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 

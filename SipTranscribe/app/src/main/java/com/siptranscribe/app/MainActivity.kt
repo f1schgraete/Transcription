@@ -1,6 +1,7 @@
 package com.siptranscribe.app
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -46,6 +47,10 @@ class MainActivity : AppCompatActivity() {
         const val KEY_AZURE_ENDPOINT = "azure_endpoint"
         const val KEY_AZURE_KEY = "azure_key"
         const val KEY_AZURE_DEPLOYMENT = "azure_deployment"
+        const val KEY_OWNER_NAMES = "owner_names"
+        const val KEY_SUMMARY_PROMPT = "summary_prompt"
+        const val DEFAULT_OWNER_NAMES =
+            "Waltraud, Walde, Babu, Dr. Hirsch, Waltraud Hirsch"
         private const val REQ_PERMS = 101
     }
 
@@ -115,6 +120,10 @@ class MainActivity : AppCompatActivity() {
         binding.actvMediaEnc.setAdapter(mediaEncAdapter)
 
         binding.btnRegister.setOnClickListener { saveAndRegister() }
+        binding.btnLogout.setOnClickListener { confirmAndLogout() }
+        binding.btnResetPrompt.setOnClickListener {
+            binding.etSummaryPrompt.setText(ConversationAnalyzer.DEFAULT_SYSTEM_PROMPT)
+        }
         setupSttTest()
 
         binding.btnCall.setOnClickListener {
@@ -304,6 +313,10 @@ class MainActivity : AppCompatActivity() {
         binding.etAzureEndpoint.setText(prefs.getString(KEY_AZURE_ENDPOINT, ""))
         binding.etAzureKey.setText(prefs.getString(KEY_AZURE_KEY, ""))
         binding.etAzureDeployment.setText(prefs.getString(KEY_AZURE_DEPLOYMENT, ""))
+        binding.etOwnerNames.setText(prefs.getString(KEY_OWNER_NAMES, DEFAULT_OWNER_NAMES))
+        binding.etSummaryPrompt.setText(
+            prefs.getString(KEY_SUMMARY_PROMPT, ConversationAnalyzer.DEFAULT_SYSTEM_PROMPT)
+        )
     }
 
     private fun saveAndRegister() {
@@ -350,6 +363,8 @@ class MainActivity : AppCompatActivity() {
             putString(KEY_AZURE_ENDPOINT, binding.etAzureEndpoint.text.toString().trim())
             putString(KEY_AZURE_KEY, binding.etAzureKey.text.toString().trim())
             putString(KEY_AZURE_DEPLOYMENT, binding.etAzureDeployment.text.toString().trim())
+            putString(KEY_OWNER_NAMES, binding.etOwnerNames.text.toString().trim())
+            putString(KEY_SUMMARY_PROMPT, binding.etSummaryPrompt.text.toString())
             apply()
         }
 
@@ -425,9 +440,11 @@ class MainActivity : AppCompatActivity() {
             binding.btnTestStt.text = "Test stoppen"
 
             val t = TranscriptionManager(this).also { testTranscriber = it }
-            t.onTranscription = { text, isFinal ->
+            t.onTranscription = { text, isFinal, speakerId ->
                 runOnUiThread {
-                    binding.tvTestResult.text = if (isFinal) "✓ $text" else "… $text"
+                    val tag = if (speakerId != null && speakerId != "Unknown") "[$speakerId] " else ""
+                    binding.tvTestResult.text =
+                        if (isFinal) "✓ $tag$text" else "… $tag$text"
                 }
             }
             t.onError = { msg ->
@@ -454,6 +471,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+
+    /**
+     * Sends an UNREGISTER, stops the foreground service, and exits the app.
+     * The OS won't auto-restart the service after stopSelf(), so this is the
+     * only way to "really log out".
+     */
+    private fun confirmAndLogout() {
+        AlertDialog.Builder(this)
+            .setTitle("Abmelden und Beenden")
+            .setMessage("SIP-Anmeldung wird beendet und die App geschlossen. Eingehende Anrufe können dann nicht empfangen werden, bis Sie wieder auf Verbinden tippen.")
+            .setPositiveButton("Beenden") { _, _ ->
+                SipService.logoutAndStop(this)
+                finishAffinity()
+                android.os.Process.killProcess(android.os.Process.myPid())
+            }
+            .setNegativeButton("Abbrechen", null)
+            .show()
+    }
 
     private fun readWavSampleRate(file: java.io.File): Int = try {
         java.io.RandomAccessFile(file, "r").use { raf ->

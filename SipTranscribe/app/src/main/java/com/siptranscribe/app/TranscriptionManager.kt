@@ -30,8 +30,8 @@ class TranscriptionManager(private val context: Context) {
     private val recorder = CallAudioRecorder()
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    /** Called on the main thread with (text, isFinal). */
-    var onTranscription: ((String, Boolean) -> Unit)? = null
+    /** Called on the main thread with (text, isFinal, speakerId). */
+    var onTranscription: ((String, Boolean, String?) -> Unit)? = null
 
     /** Called on the main thread when a non-recoverable error occurs. */
     var onError: ((String) -> Unit)? = null
@@ -39,8 +39,8 @@ class TranscriptionManager(private val context: Context) {
     fun start(recordingFilePath: String, sampleRate: Int) {
         Log.i(TAG, "start($recordingFilePath, $sampleRate Hz)")
 
-        sttEngine.onResult = { text, isFinal ->
-            mainHandler.post { onTranscription?.invoke(text, isFinal) }
+        sttEngine.onResult = { text, isFinal, speakerId ->
+            mainHandler.post { onTranscription?.invoke(text, isFinal, speakerId) }
         }
         sttEngine.onError = { msg ->
             Log.e(TAG, "STT error: $msg")

@@ -273,7 +273,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Azure Speech"
+                                android:text="KI (Azure)"
                                 android:textSize="14sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/text_primary"
@@ -323,6 +323,46 @@
                                     android:textSize="16sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Namen des Anschluss-Inhabers (komma-getrennt)"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_owner_names"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="text"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Prompt für Zusammenfassung"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_summary_prompt"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="textMultiLine"
+                                    android:gravity="top|start"
+                                    android:minLines="6"
+                                    android:maxLines="20"
+                                    android:textSize="14sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <Button
+                                android:id="@+id/btn_reset_prompt"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="end"
+                                android:text="Standard-Prompt"
+                                android:textSize="13sp"
+                                style="@style/Widget.MaterialComponents.Button.TextButton" />
+
                         </LinearLayout>
 
                         <Button
@@ -333,6 +373,15 @@
                             android:text="Verbinden"
                             android:textSize="20sp"
                             android:backgroundTint="@color/accent" />
+
+                        <Button
+                            android:id="@+id/btn_logout"
+                            android:layout_width="match_parent"
+                            android:layout_height="60dp"
+                            android:layout_marginTop="10dp"
+                            android:text="Abmelden und Beenden"
+                            android:textSize="18sp"
+                            android:backgroundTint="@color/mic_off" />
 
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>

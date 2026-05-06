@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.text.SpannableStringBuilder
 import android.text.Spanned
+import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import android.util.Log
 import android.view.View
@@ -23,9 +24,20 @@ class CallActivity : AppCompatActivity() {
 
     private var callSeconds = 0
     private var timerRunnable: Runnable? = null
-    private val transcript = StringBuilder()
-    private var partial: String = ""
+
+    /** Finalised speaker turns, in order. Each turn keeps its speaker tag for color coding. */
+    private val turns = mutableListOf<Turn>()
+    /** In-flight partial result; replaces the previous partial on each update. */
+    private var partial: Turn? = null
+    /** Maps Azure speaker IDs to a stable color slot in [SPEAKER_BG_COLORS]. */
+    private val speakerColorMap = linkedMapOf<String, Int>()
+    /** Status line shown at the bottom of the transcript area (phone layout only). */
+    private var summaryStatus: String? = null
+    /** Final summary block shown at the bottom (phone layout only). */
+    private var summaryBlock: String? = null
+
     private var callEnded = false
+    private var speakerOn = false
     private var recordingStarted = false
     private var answered = false
     private var callStartTime = 0L
@@ -39,12 +51,28 @@ class CallActivity : AppCompatActivity() {
      */
     private var recordFilePath: String = ""
 
+    private data class Turn(val speakerId: String, val text: String)
+
     companion object {
         const val EXTRA_IS_INCOMING = "is_incoming"
         const val EXTRA_REMOTE_ADDRESS = "remote_address"
         const val EXTRA_REMOTE_NUMBER = "remote_number"
         const val EXTRA_RECORD_FILE = "record_file"
         private const val TAG = "CallActivity"
+
+        /**
+         * Background colors for speaker turns. Chosen for readers with low vision /
+         * macular degeneration: pale, high-luminance pastels with very different hues
+         * (warm cream vs cool blue vs neutral grey) that keep dark text easy to read.
+         * The list is consulted in order — first new speaker gets index 0, etc.
+         */
+        private val SPEAKER_BG_COLORS = intArrayOf(
+            0xFFFFF8E1.toInt(),   // pale cream — Speaker 1
+            0xFFE3F2FD.toInt(),   // pale blue — Speaker 2
+            0xFFE8F5E9.toInt(),   // pale green — fallback
+            0xFFF3E5F5.toInt()    // pale lavender — fallback
+        )
+        private const val UNKNOWN_SPEAKER_BG = 0xFFEEEEEE.toInt()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,6 +111,9 @@ class CallActivity : AppCompatActivity() {
             finish()
         }
 
+        binding.btnSpeaker.setOnClickListener { toggleSpeaker() }
+        applySpeakerButtonStyle()
+
         binding.btnAccept.setOnClickListener {
             LinphoneManager.getCurrentCall()?.let { call ->
                 // For incoming calls: generate the path here so it's in the call params
@@ -101,6 +132,24 @@ class CallActivity : AppCompatActivity() {
             LinphoneManager.getCurrentCall()?.let { LinphoneManager.declineCall(it) }
             cancelIncomingNotification()
             finish()
+        }
+    }
+
+    private fun toggleSpeaker() {
+        speakerOn = !speakerOn
+        if (speakerOn) LinphoneManager.routeToSpeaker() else LinphoneManager.routeToEarpiece()
+        applySpeakerButtonStyle()
+    }
+
+    private fun applySpeakerButtonStyle() {
+        if (speakerOn) {
+            binding.btnSpeaker.text = "Lautsprecher AN"
+            binding.btnSpeaker.backgroundTintList =
+                getColorStateList(R.color.accent)
+        } else {
+            binding.btnSpeaker.text = "Lautsprecher"
+            binding.btnSpeaker.backgroundTintList =
+                getColorStateList(R.color.mic_off)
         }
     }
 
@@ -133,13 +182,14 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun setupTranscriber() {
-        transcriber.onTranscription = { text, isFinal ->
+        transcriber.onTranscription = { text, isFinal, speakerId ->
             runOnUiThread {
+                val sid = speakerId ?: "Unknown"
                 if (isFinal) {
-                    if (text.isNotBlank()) transcript.append(text).append(' ')
-                    partial = ""
+                    if (text.isNotBlank()) turns.add(Turn(sid, text))
+                    partial = null
                 } else {
-                    partial = text
+                    partial = if (text.isNotBlank()) Turn(sid, text) else null
                 }
                 renderTranscript()
             }
@@ -150,25 +200,80 @@ class CallActivity : AppCompatActivity() {
     }
 
     /**
-     * Renders the finalised text in the primary colour followed by the in-progress
-     * partial in a faded grey, all in the same TextView. New utterances always
-     * appear at the same line position — no jumping between zones.
+     * Stable color for a speaker. Each newly-seen ID claims the next free slot in
+     * [SPEAKER_BG_COLORS]. "Unknown" — Azure's pre-warm-up label — gets a neutral grey
+     * so it doesn't burn through a real-speaker color.
+     */
+    private fun bgColorFor(speakerId: String): Int {
+        if (speakerId == "Unknown" || speakerId.isBlank()) return UNKNOWN_SPEAKER_BG
+        val idx = speakerColorMap.getOrPut(speakerId) {
+            val next = speakerColorMap.size
+            if (next < SPEAKER_BG_COLORS.size) next else SPEAKER_BG_COLORS.size - 1
+        }
+        return SPEAKER_BG_COLORS[idx]
+    }
+
+    /**
+     * One TextView, latest content at the bottom. Each speaker turn becomes its own
+     * coloured paragraph; the active partial appends in the same speaker's colour with
+     * a faded foreground so the user can see what's still being processed.
      */
     private fun renderTranscript() {
-        val builder = SpannableStringBuilder(transcript)
-        if (partial.isNotEmpty()) {
-            val start = builder.length
-            builder.append(partial)
-            builder.setSpan(
-                ForegroundColorSpan(Color.parseColor("#888888")),
-                start,
-                builder.length,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
+        val builder = SpannableStringBuilder()
+        for ((i, turn) in turns.withIndex()) {
+            appendTurn(builder, turn, partial = false)
+            if (i < turns.size - 1) builder.append('\n')
+        }
+        partial?.let { p ->
+            if (turns.isNotEmpty()) builder.append('\n')
+            appendTurn(builder, p, partial = true)
+        }
+        summaryStatus?.let {
+            if (builder.isNotEmpty()) builder.append("\n\n")
+            builder.append(it)
+        }
+        summaryBlock?.let {
+            if (builder.isNotEmpty()) builder.append("\n\n──────────────\n")
+            builder.append(it)
         }
         binding.tvHistory.text = builder
         binding.scrollHistory.post {
             binding.scrollHistory.fullScroll(View.FOCUS_DOWN)
+        }
+    }
+
+    /**
+     * Flatten finalised speaker turns into a transcript string suitable for the LLM.
+     * Each line begins with a speaker tag so the model can reason about who said what.
+     */
+    private fun buildLabeledTranscript(): String {
+        if (turns.isEmpty()) return ""
+        val sb = StringBuilder()
+        for (turn in turns) {
+            val label = when {
+                turn.speakerId == "Unknown" || turn.speakerId.isBlank() -> "Sprecher ?"
+                else -> "Sprecher ${(speakerColorMap[turn.speakerId] ?: 0) + 1}"
+            }
+            sb.append('[').append(label).append("] ").append(turn.text).append('\n')
+        }
+        return sb.toString().trimEnd()
+    }
+
+    private fun appendTurn(builder: SpannableStringBuilder, turn: Turn, partial: Boolean) {
+        // Pad each side so the background extends slightly past the text.
+        val start = builder.length
+        builder.append(' ').append(turn.text).append(' ')
+        builder.setSpan(
+            BackgroundColorSpan(bgColorFor(turn.speakerId)),
+            start, builder.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        if (partial) {
+            builder.setSpan(
+                ForegroundColorSpan(Color.parseColor("#666666")),
+                start, builder.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
         }
     }
 
@@ -219,7 +324,7 @@ class CallActivity : AppCompatActivity() {
      * meaningful. Result is appended at the bottom of the transcript view.
      */
     private fun runAnalysisIfPossible() {
-        val text = transcript.toString().trim()
+        val text = buildLabeledTranscript()
         if (text.length < 30) {
             Log.d(TAG, "Skipping analysis: transcript too short")
             return
@@ -232,11 +337,20 @@ class CallActivity : AppCompatActivity() {
             Log.i(TAG, "Skipping analysis: chat deployment not configured")
             return
         }
+        val prompt = prefs.getString(MainActivity.KEY_SUMMARY_PROMPT, null)
+            ?.takeIf { it.isNotBlank() }
+            ?: ConversationAnalyzer.DEFAULT_SYSTEM_PROMPT
+        val owners = prefs.getString(MainActivity.KEY_OWNER_NAMES, MainActivity.DEFAULT_OWNER_NAMES)
+            .orEmpty()
+            .split(',')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
 
         appendAnalysisStatus("Analyse wird erstellt …")
         Thread({
             try {
-                val result = ConversationAnalyzer(endpoint, key, deployment).analyze(text)
+                val result = ConversationAnalyzer(endpoint, key, deployment, prompt, owners)
+                    .analyze(text)
                 handler.post { showAnalysis(result) }
             } catch (e: Exception) {
                 Log.e(TAG, "Analysis failed", e)
@@ -258,9 +372,8 @@ class CallActivity : AppCompatActivity() {
             binding.cardSummary?.visibility = View.VISIBLE
             binding.tvSummary?.text = msg
         } else {
-            if (transcript.isNotEmpty() && transcript.last() != '\n') transcript.append('\n')
-            transcript.append('\n').append(msg).append('\n')
-            partial = ""
+            summaryStatus = msg
+            summaryBlock = null
             renderTranscript()
         }
     }
@@ -271,13 +384,8 @@ class CallActivity : AppCompatActivity() {
             binding.cardSummary?.visibility = View.VISIBLE
             binding.tvSummary?.text = text
         } else {
-            // Replace the "Analyse wird erstellt …" placeholder appended earlier.
-            val placeholder = "\n\nAnalyse wird erstellt …\n"
-            val idx = transcript.lastIndexOf(placeholder)
-            if (idx >= 0) transcript.setLength(idx)
-            transcript.append('\n').append("──────────────").append('\n')
-            transcript.append(text)
-            partial = ""
+            summaryStatus = null
+            summaryBlock = text
             renderTranscript()
         }
     }

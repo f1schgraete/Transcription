@@ -239,6 +239,27 @@ object LinphoneManager {
 
     fun getCore(): Core? = core
 
+    /**
+     * Unregister SIP and tear the core down so the OS won't auto-restart anything.
+     * Differs from [destroy] in that it explicitly clears the SIP account first
+     * (sending an UNREGISTER to the server before the core stops).
+     */
+    fun unregisterAndDestroy() {
+        val c = core
+        if (c != null) {
+            try {
+                c.clearAccounts()
+                c.clearAllAuthInfo()
+                // Briefly let the unregister go out before we stop the core.
+                repeat(20) { c.iterate(); Thread.sleep(50) }
+            } catch (e: Exception) {
+                Log.w(TAG, "unregisterAndDestroy: error sending UNREGISTER", e)
+            }
+        }
+        destroy()
+        isRegistered = false
+    }
+
     fun destroy() {
         coreListener?.let { core?.removeListener(it) }
         core?.stop()

@@ -21,8 +21,13 @@ interface SttEngine {
     /** Release all resources. */
     fun stop()
 
-    /** Fired on the thread that calls [feed]. (text, isFinal) */
-    var onResult: ((String, Boolean) -> Unit)?
+    /**
+     * Fired on the thread that calls [feed].
+     * (text, isFinal, speakerId) — speakerId is null when the engine doesn't
+     * provide diarisation, "Unknown" while Azure is still warming up, or e.g.
+     * "Guest-1" / "Guest-2" once it has separated speakers.
+     */
+    var onResult: ((String, Boolean, String?) -> Unit)?
 
     /** Fired when a non-recoverable error occurs. */
     var onError: ((String) -> Unit)?

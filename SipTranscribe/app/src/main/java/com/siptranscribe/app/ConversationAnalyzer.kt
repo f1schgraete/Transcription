@@ -21,7 +21,9 @@ import javax.net.ssl.HttpsURLConnection
 class ConversationAnalyzer(
     private val endpoint: String,
     private val apiKey: String,
-    private val deployment: String
+    private val deployment: String,
+    private val systemPrompt: String,
+    private val ownerNames: List<String>
 ) {
 
     companion object {
@@ -29,21 +31,45 @@ class ConversationAnalyzer(
         private const val API_VERSION = "2024-08-01-preview"
         private const val TIMEOUT_MS = 30_000
 
-        private const val SYSTEM_PROMPT =
-            "Du analysierst das Transkript eines Telefongesprächs auf Deutsch. " +
-            "Es gibt zwei Sprecher (Anrufer und Angerufener), aber das Transkript " +
-            "ist nicht nach Sprechern getrennt. Antworte ausschließlich mit gültigem " +
-            "JSON in genau diesem Schema:\n" +
+        /**
+         * Placeholder substituted with the comma-separated owner-name list before the
+         * prompt is sent. Users editing the prompt in settings can keep, remove, or
+         * reposition this token.
+         */
+        const val OWNER_NAMES_PLACEHOLDER = "{OWNER_NAMES}"
+
+        /**
+         * Default system prompt. Asks the model to:
+         *  - identify which side of the call is the phone owner using a known-names list,
+         *  - return the *other* side as caller,
+         *  - render Termine as full actionable phrases (date + what + with whom),
+         *  - keep all output as compact stichpunkte.
+         */
+        const val DEFAULT_SYSTEM_PROMPT =
+            "Du bist ein sorgfältiger Assistent und analysierst das Transkript eines deutschen Telefongesprächs.\n" +
+            "Es gibt zwei Sprecher: den Inhaber des Telefonanschlusses und den Anrufer. " +
+            "Das Transkript ist nicht nach Sprechern getrennt.\n" +
+            "\n" +
+            "Inhaber-Namen (eine dieser Personen ist NICHT der Anrufer): $OWNER_NAMES_PLACEHOLDER\n" +
+            "\n" +
+            "Denke kurz darüber nach, wer was sagt, bevor Du das JSON erstellst:\n" +
+            "1) Der Anrufer ist die Person, die NICHT in der Inhaber-Liste steht.\n" +
+            "2) Termine sind nur dann Termine, wenn etwas Konkretes verabredet wird – nicht nur ein Datum allein. " +
+            "Formuliere jeden Termin als kurzen vollständigen Satz: WANN – WAS – MIT WEM (z. B. \"Di 15:00 – Friseurtermin Frau Schmidt\").\n" +
+            "3) \"Wichtige Punkte\" sind 2–5 inhaltliche Stichpunkte, was besprochen oder vereinbart wurde – keine Begrüßungen, keine Floskeln.\n" +
+            "4) \"Aufgaben\" sind nur klare Handlungen mit Verantwortlichem, idealerweise mit Frist.\n" +
+            "\n" +
+            "Antworte ausschließlich mit gültigem JSON in genau diesem Schema:\n" +
             "{\n" +
             "  \"caller_name\": string|null,    // Name des Anrufers, falls erkennbar\n" +
-            "  \"topic\": string|null,           // Hauptthema in 1-3 Wörtern\n" +
-            "  \"important_points\": [string],   // 2-5 Stichpunkte zum Inhalt, kurz\n" +
-            "  \"dates\": [string],              // Termine, Daten und Uhrzeiten\n" +
-            "  \"todos\": [string]               // Aufgaben oder Vereinbarungen\n" +
+            "  \"topic\": string|null,           // Hauptthema in 1–4 Wörtern\n" +
+            "  \"important_points\": [string],   // 2–5 kurze Stichpunkte\n" +
+            "  \"dates\": [string],              // siehe Regel 2 – vollständige Termin-Sätze\n" +
+            "  \"todos\": [string]               // siehe Regel 4 – konkrete Aufgaben\n" +
             "}\n" +
-            "Keine ganzen Sätze, keine Wiederholungen, keine Floskeln. " +
-            "Verwende null oder leere Listen, wenn keine Information vorliegt. " +
-            "Keine zusätzlichen Felder, keine Markdown-Codeblöcke."
+            "\n" +
+            "Verwende null oder leere Listen, wenn nichts Belastbares im Gespräch vorkam. " +
+            "Keine zusätzlichen Felder. Keine Markdown-Codeblöcke. Keine Erklärungen vor oder nach dem JSON."
     }
 
     data class Result(
@@ -79,9 +105,16 @@ class ConversationAnalyzer(
     }
 
     private fun buildRequestBody(transcript: String): String {
+        val ownersRendered = ownerNames
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .joinToString(", ")
+            .ifEmpty { "(keine Namen konfiguriert)" }
+        val resolvedPrompt = systemPrompt.replace(OWNER_NAMES_PLACEHOLDER, ownersRendered)
+
         val payload = JSONObject().apply {
             put("messages", JSONArray()
-                .put(JSONObject().put("role", "system").put("content", SYSTEM_PROMPT))
+                .put(JSONObject().put("role", "system").put("content", resolvedPrompt))
                 .put(JSONObject().put("role", "user").put("content", transcript))
             )
             put("temperature", 0.2)
