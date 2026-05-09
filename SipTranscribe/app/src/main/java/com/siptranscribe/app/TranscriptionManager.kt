@@ -7,64 +7,85 @@ import android.os.Looper
 import android.util.Log
 
 /**
- * Orchestrates call audio reading ([CallAudioRecorder]) and cloud STT ([AzureSttEngine]).
+ * Orchestrates per-direction call audio reading and cloud STT for a single call.
  *
- * Usage:
- *  1. Call [start] with the path to the WAV file that Linphone is recording.
- *  2. [onTranscription] fires on the main thread with (text, isFinal).
- *  3. Call [stop] when the call ends.
+ * Split-recording flow (requires the locally built linphone-sdk AAR with our
+ * mediastreamer2 patch and `LinphoneManager.enableSplitRecording(true)`):
+ *  1. Linphone writes two WAVs — one for the local mic (uplink), one for the
+ *     remote (downlink) — at the paths derived from the original recordFile.
+ *  2. Each path is tailed by its own [CallAudioRecorder].
+ *  3. PCM is fed to its own [AzureSttEngine]. Results are emitted with a fixed
+ *     speaker label ("Ich" for local, "Anrufer" for remote) — channel == speaker,
+ *     so no diarization is needed.
  */
 class TranscriptionManager(private val context: Context) {
 
     companion object {
         private const val TAG = "TranscriptionManager"
+        const val LABEL_LOCAL = "Ich"
+        const val LABEL_REMOTE = "Anrufer"
     }
 
-    private val sttEngine: SttEngine = run {
-        val prefs = context.getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
-        AzureSttEngine(
-            endpoint = prefs.getString(MainActivity.KEY_AZURE_ENDPOINT, "") ?: "",
-            apiKey   = prefs.getString(MainActivity.KEY_AZURE_KEY, "") ?: ""
-        )
-    }
-    private val recorder = CallAudioRecorder()
+    private val ulEngine: SttEngine = newEngine()
+    private val dlEngine: SttEngine = newEngine()
+    private val ulRecorder = CallAudioRecorder()
+    private val dlRecorder = CallAudioRecorder()
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    /** Called on the main thread with (text, isFinal, speakerId). */
+    /** Called on the main thread with (text, isFinal, speakerLabel). */
     var onTranscription: ((String, Boolean, String?) -> Unit)? = null
 
     /** Called on the main thread when a non-recoverable error occurs. */
     var onError: ((String) -> Unit)? = null
 
-    fun start(recordingFilePath: String, sampleRate: Int) {
-        Log.i(TAG, "start($recordingFilePath, $sampleRate Hz)")
+    private fun newEngine(): SttEngine {
+        val prefs = context.getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+        return AzureSttEngine(
+            endpoint = prefs.getString(MainActivity.KEY_AZURE_ENDPOINT, "") ?: "",
+            apiKey   = prefs.getString(MainActivity.KEY_AZURE_KEY, "") ?: ""
+        )
+    }
 
-        sttEngine.onResult = { text, isFinal, speakerId ->
-            mainHandler.post { onTranscription?.invoke(text, isFinal, speakerId) }
+    fun start(uplinkPath: String, downlinkPath: String, sampleRate: Int) {
+        Log.i(TAG, "start(ul=$uplinkPath, dl=$downlinkPath, $sampleRate Hz)")
+        wire(ulEngine, ulRecorder, uplinkPath,   sampleRate, LABEL_LOCAL)
+        wire(dlEngine, dlRecorder, downlinkPath, sampleRate, LABEL_REMOTE)
+    }
+
+    private fun wire(
+        engine: SttEngine,
+        recorder: CallAudioRecorder,
+        path: String,
+        sampleRate: Int,
+        label: String
+    ) {
+        engine.onResult = { text, isFinal, _ ->
+            // Channel is the speaker — override Azure's diarization label.
+            mainHandler.post { onTranscription?.invoke(text, isFinal, label) }
         }
-        sttEngine.onError = { msg ->
-            Log.e(TAG, "STT error: $msg")
+        engine.onError = { msg ->
+            Log.e(TAG, "STT error [$label]: $msg")
             mainHandler.post { onError?.invoke(msg) }
         }
-
         recorder.onSampleRate = { rate ->
-            Log.i(TAG, "Recorder: sample rate $rate Hz → preparing STT engine")
-            sttEngine.prepare(rate)
+            Log.i(TAG, "[$label] recorder sample rate $rate Hz → preparing STT")
+            engine.prepare(rate)
         }
         recorder.onPcmData = { data, length ->
-            sttEngine.feed(data, length)
+            engine.feed(data, length)
         }
         recorder.onError = { msg ->
-            Log.e(TAG, "Recorder error: $msg")
+            Log.e(TAG, "Recorder error [$label]: $msg")
             mainHandler.post { onError?.invoke(msg) }
         }
-
-        recorder.start(recordingFilePath, sampleRate)
+        recorder.start(path, sampleRate)
     }
 
     fun stop() {
         Log.i(TAG, "stop()")
-        recorder.stop()
-        sttEngine.stop()
+        ulRecorder.stop()
+        dlRecorder.stop()
+        ulEngine.stop()
+        dlEngine.stop()
     }
 }

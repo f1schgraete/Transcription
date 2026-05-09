@@ -29,8 +29,15 @@ class CallActivity : AppCompatActivity() {
     private val turns = mutableListOf<Turn>()
     /** In-flight partial result; replaces the previous partial on each update. */
     private var partial: Turn? = null
-    /** Maps Azure speaker IDs to a stable color slot in [SPEAKER_BG_COLORS]. */
-    private val speakerColorMap = linkedMapOf<String, Int>()
+    /**
+     * Maps speaker IDs to a stable color slot in [SPEAKER_BG_COLORS]. Pre-populated for the
+     * split-recording fixed labels so the local user is always cream and the caller always blue,
+     * regardless of who speaks first.
+     */
+    private val speakerColorMap = linkedMapOf(
+        TranscriptionManager.LABEL_LOCAL  to 0,
+        TranscriptionManager.LABEL_REMOTE to 1
+    )
     /** Status line shown at the bottom of the transcript area (phone layout only). */
     private var summaryStatus: String? = null
     /** Final summary block shown at the bottom (phone layout only). */
@@ -244,16 +251,15 @@ class CallActivity : AppCompatActivity() {
 
     /**
      * Flatten finalised speaker turns into a transcript string suitable for the LLM.
-     * Each line begins with a speaker tag so the model can reason about who said what.
+     * Each line begins with the actual speaker label ("Ich" / "Anrufer" in split mode) so
+     * the analyser knows who said what.
      */
     private fun buildLabeledTranscript(): String {
         if (turns.isEmpty()) return ""
         val sb = StringBuilder()
         for (turn in turns) {
-            val label = when {
-                turn.speakerId == "Unknown" || turn.speakerId.isBlank() -> "Sprecher ?"
-                else -> "Sprecher ${(speakerColorMap[turn.speakerId] ?: 0) + 1}"
-            }
+            val label = if (turn.speakerId.isBlank() || turn.speakerId == "Unknown")
+                "Sprecher ?" else turn.speakerId
             sb.append('[').append(label).append("] ").append(turn.text).append('\n')
         }
         return sb.toString().trimEnd()
@@ -278,9 +284,24 @@ class CallActivity : AppCompatActivity() {
     }
 
     /**
+     * Derive uplink/downlink WAV paths from the configured recordFile (split-recording mode).
+     * Mirrors `derive_split_paths` in our liblinphone patch (audio-stream.cpp).
+     */
+    private fun splitPaths(base: String): Pair<String, String> {
+        val slash = maxOf(base.lastIndexOf('/'), base.lastIndexOf('\\'))
+        val dot = base.lastIndexOf('.')
+        return if (dot != -1 && dot > slash) {
+            base.substring(0, dot) + ".ul" + base.substring(dot) to
+            base.substring(0, dot) + ".dl" + base.substring(dot)
+        } else {
+            "$base.ul" to "$base.dl"
+        }
+    }
+
+    /**
      * Called once when StreamsRunning fires. The record file path was embedded in the call
-     * params before the call was accepted/initiated, so Linphone already knows where to write.
-     * We just call startRecording() and start reading the file.
+     * params before the call was accepted/initiated; with split recording enabled the patched
+     * Linphone writes two WAVs at <base>.ul.<ext> and <base>.dl.<ext>.
      */
     private fun beginRecordingAndTranscription() {
         if (recordingStarted) {
@@ -296,9 +317,14 @@ class CallActivity : AppCompatActivity() {
         answered = true
         if (callStartTime == 0L) callStartTime = System.currentTimeMillis()
         val sampleRate = LinphoneManager.getCurrentCallSampleRate()
-        Log.i(TAG, "beginRecordingAndTranscription: $recordFilePath @ $sampleRate Hz")
+        val (ul, dl) = splitPaths(recordFilePath)
+        Log.i(TAG, "beginRecordingAndTranscription: ul=$ul dl=$dl @ $sampleRate Hz")
+        // Split-record config is set globally in LinphoneManager.init() so it's already in
+        // effect when liblinphone calls MS2AudioStream::setRecordPath during stream setup
+        // (well before this point). Do NOT re-toggle here — flipping it mid-flow has no
+        // effect on a stream whose recorder was already configured in mixed mode.
         LinphoneManager.startCallRecording()
-        transcriber.start(recordFilePath, sampleRate)
+        transcriber.start(ul, dl, sampleRate)
     }
 
     private fun endCall() {

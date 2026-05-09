@@ -36,7 +36,12 @@ android {
 }
 
 dependencies {
-    implementation 'org.linphone:linphone-sdk-android:5.3.110'
+    // Locally-built linphone-sdk with our split-recording patch in mediastreamer2 + liblinphone.
+    // Build steps: see CLAUDE.md "Building the local linphone-sdk AAR".
+    implementation files('libs/linphone-sdk-android.aar')
+    // Transitive deps the linphone-sdk Maven artefact would have pulled — files() does not.
+    implementation 'org.apache.commons:commons-compress:1.16.1'
+    implementation 'androidx.annotation:annotation:1.1.0'
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'

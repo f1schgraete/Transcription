@@ -461,7 +461,10 @@ class MainActivity : AppCompatActivity() {
                 testTranscriber = null
                 return@setOnClickListener
             }
-            t.start(testFile.absolutePath, sampleRate)
+            // STT-only test: feed the same WAV as both channels so the user sees
+            // the recognizer emit results twice (labeled Ich + Anrufer). The point of
+            // this button is to validate the Azure endpoint, not the split pipeline.
+            t.start(testFile.absolutePath, testFile.absolutePath, sampleRate)
         }
     }
 

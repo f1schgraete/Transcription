@@ -36,6 +36,12 @@ object LinphoneManager {
         // Deutsche Telekom's SIP certificate may not be in Linphone's bundled CA store;
         // disabling verification avoids the TLS io-error on registration.
         core!!.verifyServerCertificates(false)
+        // Enable split (per-direction) recording globally. Must be set BEFORE any call's
+        // setRecordPath fires (which liblinphone calls during stream setup, well before
+        // startCallRecording from the UI). If we wait until the call starts, liblinphone
+        // has already configured the mixed-mode recorder and the split filters won't exist.
+        core!!.config.setInt("sound", "split_record", 1)
+        Log.i(TAG, "init: sound.split_record=1 (forked SDK split-recording enabled)")
 
         coreListener = object : CoreListenerStub() {
 
@@ -185,6 +191,22 @@ object LinphoneManager {
     fun setMicEnabled(enabled: Boolean) {
         Log.d(TAG, "setMicEnabled($enabled)")
         core?.isMicEnabled = enabled
+    }
+
+    /**
+     * Enable per-direction (split) call recording. When on, [Call.startRecording] writes two
+     * mono WAV files instead of one mixed file: a `<base>.ul.<ext>` containing the local mic
+     * (uplink, post-AEC) and a `<base>.dl.<ext>` containing the remote (downlink, post-decoder).
+     *
+     * Backed by the `[sound] split_record` config flag, which is read by our patched
+     * `MS2AudioStream::setRecordPath` / `startRecording` in liblinphone. Requires the locally
+     * built linphone-sdk AAR from `~/linphone-sdk/build-android-arm64`; against the upstream
+     * Maven AAR the flag is silently ignored and recording is mixed-mono as before.
+     */
+    fun enableSplitRecording(enabled: Boolean) {
+        val c = core ?: run { Log.w(TAG, "enableSplitRecording: core is null"); return }
+        c.config.setInt("sound", "split_record", if (enabled) 1 else 0)
+        Log.i(TAG, "enableSplitRecording($enabled)")
     }
 
     fun routeToSpeaker() {
