@@ -99,13 +99,14 @@ object LinphoneManager {
         password: String,
         domain: String,
         displayName: String = username,
-        port: Int = 5061,
-        transport: TransportType = TransportType.Tls,
+        port: Int = 5060,
+        transport: TransportType = TransportType.Udp,
         expires: Int = 3600,
         authUserId: String? = null,
         realm: String? = null,
         outboundProxy: String? = null,
-        mediaEncryption: MediaEncryption = MediaEncryption.SRTP
+        mediaEncryption: MediaEncryption = MediaEncryption.None,
+        useSrv: Boolean = true
     ) {
         val c = core ?: return
         currentDomain = domain
@@ -113,6 +114,15 @@ object LinphoneManager {
 
         c.clearAccounts()
         c.clearAllAuthInfo()
+
+        // RFC 3263 says a SIP UA that resolves a host without an explicit
+        // port SHOULD try NAPTR, then SRV (_sip._{transport}.<domain>), and
+        // only fall back to A/AAAA on the domain itself. Linphone 5.x has
+        // SRV on by default; we set the config flag anyway so the intent is
+        // visible. The Core's enableDnsSrv() method isn't exposed in this
+        // AAR build, so we go via [sip] use_dns_srv which is what enableDnsSrv
+        // sets under the hood.
+        c.config.setInt("sip", "use_dns_srv", if (useSrv) 1 else 0)
 
         val factory = Factory.instance()
 
@@ -124,11 +134,18 @@ object LinphoneManager {
         val identity = factory.createAddress("sip:$username@$domain") ?: return
         identity.displayName = displayName.ifBlank { username }
 
-        // Server / outbound-proxy address — embed port in URI to avoid SDK version differences
+        // Server / outbound-proxy address. When SRV is on, deliberately leave
+        // the port out of the URI — embedding it short-circuits RFC 3263 and
+        // skips the SRV lookup entirely. If the user explicitly typed
+        // "host:port" as the outbound proxy we honour their intent.
         val serverHost = if (!outboundProxy.isNullOrBlank()) outboundProxy else domain
         val hostOnly = serverHost.removePrefix("sips:").removePrefix("sip:")
-        // Append port only when the host string doesn't already include one
-        val hostWithPort = if (port > 0 && !hostOnly.contains(':')) "$hostOnly:$port" else hostOnly
+        val hostWithPort = when {
+            hostOnly.contains(':') -> hostOnly
+            useSrv -> hostOnly
+            port > 0 -> "$hostOnly:$port"
+            else -> hostOnly
+        }
         val serverAddr = factory.createAddress("sip:$hostWithPort") ?: return
         serverAddr.transport = transport
 

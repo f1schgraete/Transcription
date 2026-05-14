@@ -52,6 +52,27 @@ class CallActivity : AppCompatActivity() {
     private var callerNumber = ""
 
     /**
+     * Periodic summary state. While the call is active a timer fires every
+     * [SUMMARY_INTERVAL_MS]; each tick re-runs ConversationAnalyzer over the
+     * transcript so far and quietly replaces tv_summary's text. The in-flight
+     * guard prevents two simultaneous Azure round-trips; pendingFinalAnalysis
+     * captures the "call just ended" signal so a refresh that's currently
+     * mid-flight gets followed by exactly one more pass.
+     */
+    private var analyzeInFlight = false
+    private var lastAnalyzedTurnCount = 0
+    private var pendingFinalAnalysis = false
+    private var summaryRunnable: Runnable? = null
+
+    /** Stable id assigned the first time we save the record; reused as the
+     *  filename for the encrypted archive so the two never drift apart. */
+    private var callRecordId = 0L
+    /** Most recent formatted summary, captured every time analysis succeeds.
+     *  Archived alongside the transcript so the caregiver can read it later. */
+    private var latestSummaryText: String? = null
+
+
+    /**
      * Path of the WAV file Linphone is recording to.
      * Set from the Intent extra for outgoing calls (path was embedded in params before dialling).
      * Set at accept-time for incoming calls.
@@ -80,11 +101,34 @@ class CallActivity : AppCompatActivity() {
             0xFFF3E5F5.toInt()    // pale lavender — fallback
         )
         private const val UNKNOWN_SPEAKER_BG = 0xFFEEEEEE.toInt()
+
+        private const val MIN_CHARS_FOR_SUMMARY = 80
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        // Incoming-call ergonomics: wake the screen if it's asleep, show the
+        // call UI over the keyguard, and try to dismiss the keyguard so the
+        // user lands on a usable Annehmen/Ablehnen screen instead of the
+        // lock screen. The tablet is configured with no passcode so the
+        // dismiss call succeeds; on a locked device it would simply do
+        // nothing (we never bypass auth).
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+            getSystemService(android.app.KeyguardManager::class.java)
+                ?.requestDismissKeyguard(this, null)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+            )
+        }
+
         binding = ActivityCallBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -118,7 +162,10 @@ class CallActivity : AppCompatActivity() {
             finish()
         }
 
-        binding.btnSpeaker.setOnClickListener { toggleSpeaker() }
+        // The tablet layout drops the speaker button entirely (one omni
+        // speaker, no earpiece to switch between), so the binding field
+        // is nullable here.
+        binding.btnSpeaker?.setOnClickListener { toggleSpeaker() }
         applySpeakerButtonStyle()
 
         binding.btnAccept.setOnClickListener {
@@ -149,14 +196,13 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun applySpeakerButtonStyle() {
+        val btn = binding.btnSpeaker ?: return
         if (speakerOn) {
-            binding.btnSpeaker.text = "Lautsprecher AN"
-            binding.btnSpeaker.backgroundTintList =
-                getColorStateList(R.color.accent)
+            btn.text = "Lautsprecher AN"
+            btn.backgroundTintList = getColorStateList(R.color.accent)
         } else {
-            binding.btnSpeaker.text = "Lautsprecher"
-            binding.btnSpeaker.backgroundTintList =
-                getColorStateList(R.color.mic_off)
+            btn.text = "Lautsprecher"
+            btn.backgroundTintList = getColorStateList(R.color.mic_off)
         }
     }
 
@@ -227,12 +273,25 @@ class CallActivity : AppCompatActivity() {
      */
     private fun renderTranscript() {
         val builder = SpannableStringBuilder()
-        for ((i, turn) in turns.withIndex()) {
+        // Re-read the toggle from prefs every render so a change in
+        // MainActivity takes effect on the very next transcript update,
+        // not just on the next call. Read is sub-millisecond and
+        // renderTranscript only fires when a new turn or partial arrives,
+        // so this is cheap. The unfiltered [turns] list still drives the
+        // archive and the analyser — only what's shown on screen changes.
+        val showLocal = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+            .getBoolean(MainActivity.KEY_TRANSCRIPT_SHOW_LOCAL, false)
+        val visibleTurns = if (showLocal) turns
+            else turns.filter { it.speakerId != TranscriptionManager.LABEL_LOCAL }
+        for ((i, turn) in visibleTurns.withIndex()) {
             appendTurn(builder, turn, partial = false)
-            if (i < turns.size - 1) builder.append('\n')
+            if (i < visibleTurns.size - 1) builder.append('\n')
         }
         partial?.let { p ->
-            if (turns.isNotEmpty()) builder.append('\n')
+            if (!showLocal && p.speakerId == TranscriptionManager.LABEL_LOCAL) {
+                return@let
+            }
+            if (visibleTurns.isNotEmpty()) builder.append('\n')
             appendTurn(builder, p, partial = true)
         }
         summaryStatus?.let {
@@ -325,36 +384,48 @@ class CallActivity : AppCompatActivity() {
         // effect on a stream whose recorder was already configured in mixed mode.
         LinphoneManager.startCallRecording()
         transcriber.start(ul, dl, sampleRate)
+        schedulePeriodicSummary()
     }
 
-    private fun endCall() {
-        if (callEnded) return
-        callEnded = true
-        LinphoneManager.stopCallRecording()
-        transcriber.stop()
-        stopTimer()
-        saveCallRecord(answeredCall = answered)
-        cancelIncomingNotification()
-        binding.tvStatus.text = "Anruf beendet"
-        binding.layoutCalling.visibility = View.GONE
-        binding.layoutIncoming.visibility = View.GONE
-        binding.btnHangUp.visibility = View.GONE
-        binding.btnLoeschen.visibility = View.VISIBLE
-        binding.layoutActive.visibility = View.VISIBLE
-        runAnalysisIfPossible()
+    private fun schedulePeriodicSummary() {
+        if (summaryRunnable != null) return
+        if (!hasSummaryPane) return
+        val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+        val seconds = prefs
+            .getInt(MainActivity.KEY_SUMMARY_INTERVAL, MainActivity.DEFAULT_SUMMARY_INTERVAL_SECONDS)
+            .coerceAtLeast(MainActivity.MIN_SUMMARY_INTERVAL_SECONDS)
+        val intervalMs = seconds * 1000L
+        val r = object : Runnable {
+            override fun run() {
+                tryRunAnalysis(force = false)
+                handler.postDelayed(this, intervalMs)
+            }
+        }
+        summaryRunnable = r
+        handler.postDelayed(r, intervalMs)
+    }
+
+    private fun cancelPeriodicSummary() {
+        summaryRunnable?.let { handler.removeCallbacks(it) }
+        summaryRunnable = null
     }
 
     /**
-     * Fires Azure chat completions over the finalised transcript. Skipped silently
-     * when the deployment isn't configured or the transcript is too short to be
-     * meaningful. Result is appended at the bottom of the transcript view.
+     * Posts the current transcript to Azure for a fresh summary. Throttled so:
+     *   - at most one analyse is in flight at a time,
+     *   - we don't re-run when no new turns have arrived since last pass,
+     *   - `force=true` (end-of-call path) bypasses the "nothing new" guard but
+     *     still queues behind any in-flight request via [pendingFinalAnalysis].
      */
-    private fun runAnalysisIfPossible() {
-        val text = buildLabeledTranscript()
-        if (text.length < 30) {
-            Log.d(TAG, "Skipping analysis: transcript too short")
+    private fun tryRunAnalysis(force: Boolean) {
+        if (analyzeInFlight) {
+            if (force) pendingFinalAnalysis = true
             return
         }
+        val text = buildLabeledTranscript()
+        if (text.length < MIN_CHARS_FOR_SUMMARY) return
+        if (!force && turns.size == lastAnalyzedTurnCount) return
+
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
         val endpoint = prefs.getString(MainActivity.KEY_AZURE_ENDPOINT, "")?.trim().orEmpty()
         val key = prefs.getString(MainActivity.KEY_AZURE_KEY, "")?.trim().orEmpty()
@@ -372,19 +443,71 @@ class CallActivity : AppCompatActivity() {
             .map { it.trim() }
             .filter { it.isNotEmpty() }
 
-        appendAnalysisStatus("Analyse wird erstellt …")
+        analyzeInFlight = true
+        lastAnalyzedTurnCount = turns.size
+
         Thread({
             try {
                 val result = ConversationAnalyzer(endpoint, key, deployment, prompt, owners)
                     .analyze(text)
-                handler.post { showAnalysis(result) }
+                handler.post {
+                    analyzeInFlight = false
+                    showAnalysis(result)
+                    if (pendingFinalAnalysis) {
+                        pendingFinalAnalysis = false
+                        tryRunAnalysis(force = true)
+                    }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Analysis failed", e)
                 handler.post {
-                    appendAnalysisStatus("Analyse fehlgeschlagen: ${e.message}")
+                    analyzeInFlight = false
+                    if (pendingFinalAnalysis) {
+                        pendingFinalAnalysis = false
+                        // Only surface errors when the call has ended and we have
+                        // nothing else to fall back to; mid-call periodic errors
+                        // would replace a still-valid earlier summary.
+                        appendAnalysisStatus("Analyse fehlgeschlagen: ${e.message}")
+                    }
                 }
             }
         }, "ConversationAnalyzer").start()
+    }
+
+    private fun endCall() {
+        if (callEnded) return
+        callEnded = true
+        LinphoneManager.stopCallRecording()
+        transcriber.stop()
+        stopTimer()
+        cancelPeriodicSummary()
+        saveCallRecord(answeredCall = answered)
+        cancelIncomingNotification()
+
+        // Missed-/elsewhere-answered-call path: there's no transcript and
+        // no summary, just close back to the main screen instead of leaving
+        // the user staring at a "Schließen" review screen. answered is true
+        // only after StreamsRunning fires or the user tapped Annehmen here,
+        // so an outgoing call that never connected or an incoming call
+        // grabbed by another registered device both land here.
+        if (!answered) {
+            finish()
+            return
+        }
+
+        binding.tvStatus.text = "Anruf beendet"
+        binding.layoutCalling.visibility = View.GONE
+        binding.layoutIncoming.visibility = View.GONE
+        binding.btnHangUp.visibility = View.GONE
+        binding.btnLoeschen.visibility = View.VISIBLE
+        binding.layoutActive.visibility = View.VISIBLE
+        // Save now with whatever state we have so a missed/failed analyser
+        // doesn't lose the transcript. showAnalysis() overwrites the file
+        // again with the fresher summary if/when the final pass completes.
+        saveArchive()
+        // One last analysis pass over the now-frozen transcript. If a periodic
+        // pass is still running, tryRunAnalysis() queues this via pendingFinalAnalysis.
+        tryRunAnalysis(force = true)
     }
 
     /**
@@ -406,6 +529,7 @@ class CallActivity : AppCompatActivity() {
 
     private fun showAnalysis(r: ConversationAnalyzer.Result) {
         val text = formatSummary(r)
+        latestSummaryText = text
         if (hasSummaryPane) {
             binding.cardSummary?.visibility = View.VISIBLE
             binding.tvSummary?.text = text
@@ -414,6 +538,37 @@ class CallActivity : AppCompatActivity() {
             summaryBlock = text
             renderTranscript()
         }
+        // Persist the freshest summary; idempotent overwrite at the file level.
+        // Only matters once the call has ended — periodic mid-call passes don't
+        // need to hit disk yet.
+        if (callEnded) {
+            saveArchive()
+            considerContactSuggestion(r)
+        }
+    }
+
+    /**
+     * If the final analysis identified a plausible caller name and we don't
+     * already know this number, queue a contact suggestion for the
+     * caregiver. Skips the owner's own names (LLM occasionally confuses
+     * sides) and very short calls (likely spam/hangup noise).
+     */
+    private fun considerContactSuggestion(r: ConversationAnalyzer.Result) {
+        val name = r.callerName?.trim().orEmpty()
+        if (name.isBlank() || callerNumber.isBlank()) return
+
+        val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+        val owners = prefs.getString(MainActivity.KEY_OWNER_NAMES, MainActivity.DEFAULT_OWNER_NAMES)
+            .orEmpty()
+            .split(',')
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+        if (name.lowercase() in owners) return
+
+        val durationSec = if (callStartTime > 0L) {
+            ((System.currentTimeMillis() - callStartTime) / 1000).toInt()
+        } else callSeconds
+        ContactSuggestionStore.maybeRecord(this, callerNumber, name, durationSec)
     }
 
     private fun formatSummary(r: ConversationAnalyzer.Result): String = buildString {
@@ -442,8 +597,9 @@ class CallActivity : AppCompatActivity() {
         } else {
             0
         }
+        if (callRecordId == 0L) callRecordId = System.currentTimeMillis()
         val record = CallRecord(
-            id = System.currentTimeMillis(),
+            id = callRecordId,
             direction = if (isIncoming) CallRecord.Direction.INCOMING else CallRecord.Direction.OUTGOING,
             callerName = callerName,
             callerNumber = callerNumber.ifBlank { callerName },
@@ -452,6 +608,26 @@ class CallActivity : AppCompatActivity() {
             answered = answeredCall
         )
         CallHistory.add(this, record)
+    }
+
+    /**
+     * Snapshot the transcript (and any summary captured so far) to an
+     * encrypted archive file keyed by [callRecordId]. Called at end-of-call
+     * and re-called when the final analysis arrives; the file is overwritten
+     * each time so it always reflects the freshest state. Skipped entirely
+     * when there's no content worth keeping.
+     */
+    private fun saveArchive() {
+        if (callRecordId == 0L) return
+        if (turns.isEmpty() && latestSummaryText.isNullOrBlank()) return
+        val archive = CallArchive(
+            callId = callRecordId,
+            transcriptTurns = turns.map {
+                CallArchive.TranscriptTurn(it.speakerId, it.text)
+            },
+            summaryText = latestSummaryText
+        )
+        CallArchiveStore.save(this, archive)
     }
 
     private fun cancelIncomingNotification() {
@@ -502,6 +678,7 @@ class CallActivity : AppCompatActivity() {
         super.onDestroy()
         transcriber.stop()
         stopTimer()
+        cancelPeriodicSummary()
         LinphoneManager.onCallStateChanged = null
         cancelIncomingNotification()
     }

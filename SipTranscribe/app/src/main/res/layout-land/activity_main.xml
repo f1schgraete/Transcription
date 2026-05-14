@@ -1,24 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Tablet (sw600dp) idle screen — three-column kiosk layout.
-
-  Header is a single row: app name on the left, registration status as a
-  small coloured pill in the middle, "Einstellungen" text button on the
-  right. (No second status row underneath — it was duplicate noise.)
-
-  Body splits into three columns, weighted 3:2:2:
-    LEFT   — Kontakte list (scrollable). card_settings sits above it in
-             the same ScrollView and is the only thing visible *before*
-             registration; once registered it's GONE and Kontakte takes
-             the full column.
-    MIDDLE — Favoriten 2x2 grid (4 one-tap-to-fill tiles, long-press to
-             pick a contact) over a Letzte Anrufe list.
-    RIGHT  — Dialpad for manually-typed numbers, used rarely.
-
-  A single full-width green "Anrufen" button at the very bottom is the
-  global confirm action, no matter which column was used to choose the
-  target. All existing IDs are preserved so the activity's ViewBinding
-  code keeps compiling against the same field names.
+  Phone landscape layout.
+  Left column: settings (before registration) or call history (after registration).
+  Right column: dialpad + call button.
+  Mirrors the sw600dp tablet layout's structure, with compact sizing for the
+  shorter vertical space of a phone in landscape.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -27,14 +13,14 @@
     android:orientation="vertical"
     android:background="@color/background">
 
-    <!-- ── Header (single row, status pill inline) ────────────── -->
+    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="60dp"
+        android:layout_height="44dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="24dp"
-        android:paddingEnd="12dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="4dp"
         android:background="@color/surface"
         android:elevation="4dp">
 
@@ -43,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="@string/app_name"
-            android:textSize="24sp"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary" />
 
@@ -52,70 +38,66 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Nicht registriert"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textColor="@color/status_neutral"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp" />
+            android:paddingEnd="12dp" />
 
         <Button
             android:id="@+id/btn_settings"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Einstellungen"
-            android:textSize="14sp"
+            android:textSize="13sp"
+            android:minHeight="0dp"
+            android:minWidth="0dp"
             style="@style/Widget.MaterialComponents.Button.TextButton" />
 
     </LinearLayout>
 
-    <!-- ── Three-column body ──────────────────────────────────── -->
+    <!-- Two-column body -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="horizontal"
-        android:padding="12dp">
+        android:padding="8dp">
 
-        <!--
-            LEFT COLUMN — settings (during setup) or Kontakte (once
-            registered). The ScrollView wraps both because the settings
-            card is tall enough to need scrolling; the contacts card uses
-            its inner LinearLayout for direct rendering.
-        -->
+        <!-- Left column: settings (before registration) / recent calls (after registration) -->
         <ScrollView
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="3"
-            android:layout_marginEnd="10dp">
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <!-- ───── Settings (only shown when not registered) ───── -->
+                <!-- Settings card -->
                 <androidx.cardview.widget.CardView
                     android:id="@+id/card_settings"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="10dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
+                    android:layout_marginBottom="8dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="2dp"
                     app:cardBackgroundColor="@color/surface">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp">
+                        android:padding="12dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="SIP-Zugangsdaten"
-                            android:textSize="20sp"
+                            android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_primary"
-                            android:paddingBottom="12dp" />
+                            android:paddingBottom="6dp" />
 
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="match_parent"
@@ -127,14 +109,14 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:inputType="text"
-                                android:textSize="18sp" />
+                                android:textSize="14sp" />
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:hint="Passwort"
-                            android:layout_marginTop="10dp"
+                            android:layout_marginTop="6dp"
                             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                             app:passwordToggleEnabled="true">
                             <com.google.android.material.textfield.TextInputEditText
@@ -142,44 +124,44 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:inputType="textPassword"
-                                android:textSize="18sp" />
+                                android:textSize="14sp" />
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:hint="SIP-Server (Domain)"
-                            android:layout_marginTop="10dp"
+                            android:layout_marginTop="6dp"
                             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_domain"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:inputType="textUri"
-                                android:textSize="18sp" />
+                                android:textSize="14sp" />
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:hint="Anzeigename (optional)"
-                            android:layout_marginTop="10dp"
+                            android:layout_marginTop="6dp"
                             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/et_display_name"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:inputType="textPersonName"
-                                android:textSize="18sp" />
+                                android:textSize="14sp" />
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <Button
                             android:id="@+id/btn_advanced"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
+                            android:layout_marginTop="2dp"
                             android:text="Erweiterte Einstellungen &#x25B8;"
-                            android:textSize="14sp"
+                            android:textSize="13sp"
                             style="@style/Widget.MaterialComponents.Button.TextButton" />
 
                         <LinearLayout
@@ -193,138 +175,138 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Port"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_port"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="number"
-                                    android:textSize="18sp" />
+                                    android:textSize="14sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Transport"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
                                 <AutoCompleteTextView
                                     android:id="@+id/actv_transport"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="none"
-                                    android:textSize="18sp" />
+                                    android:textSize="14sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Registrierungs-Ablauf (Sekunden)"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_expires"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="number"
-                                    android:textSize="18sp" />
+                                    android:textSize="14sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Auth-Benutzername (optional)"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_auth_user"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="text"
-                                    android:textSize="18sp" />
+                                    android:textSize="14sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Realm (optional)"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_realm"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="text"
-                                    android:textSize="18sp" />
+                                    android:textSize="14sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Outbound-Proxy (optional)"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_outbound_proxy"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="textUri"
-                                    android:textSize="18sp" />
+                                    android:textSize="14sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Medienverschl&#xFC;sselung"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
                                 <AutoCompleteTextView
                                     android:id="@+id/actv_media_enc"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="none"
-                                    android:textSize="18sp" />
+                                    android:textSize="14sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <CheckBox
                                 android:id="@+id/cb_use_srv"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 android:text="SRV-Lookup verwenden (RFC 3263)"
-                                android:textSize="15sp"
+                                android:textSize="13sp"
                                 android:checked="true" />
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="KI (Azure)"
-                                android:textSize="14sp"
+                                android:textSize="13sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/text_primary"
-                                android:layout_marginTop="20dp"
+                                android:layout_marginTop="14dp"
                                 android:paddingBottom="2dp" />
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Endpunkt-URL"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_azure_endpoint"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="textUri"
-                                    android:textSize="16sp" />
+                                    android:textSize="13sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="API-Schl&#xFC;ssel"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                                 app:passwordToggleEnabled="true">
                                 <com.google.android.material.textfield.TextInputEditText
@@ -332,42 +314,42 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="textPassword"
-                                    android:textSize="16sp" />
+                                    android:textSize="13sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Chat-Deployment (z. B. gpt-4o-mini)"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_azure_deployment"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="text"
-                                    android:textSize="16sp" />
+                                    android:textSize="13sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Namen des Anschluss-Inhabers (komma-getrennt)"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_owner_names"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="text"
-                                    android:textSize="16sp" />
+                                    android:textSize="13sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:hint="Prompt für Zusammenfassung"
-                                android:layout_marginTop="10dp"
+                                android:hint="Prompt f&#xFC;r Zusammenfassung"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_summary_prompt"
@@ -375,9 +357,9 @@
                                     android:layout_height="wrap_content"
                                     android:inputType="textMultiLine"
                                     android:gravity="top|start"
-                                    android:minLines="6"
-                                    android:maxLines="20"
-                                    android:textSize="14sp" />
+                                    android:minLines="4"
+                                    android:maxLines="14"
+                                    android:textSize="12sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <Button
@@ -386,99 +368,102 @@
                                 android:layout_height="wrap_content"
                                 android:layout_gravity="end"
                                 android:text="Standard-Prompt"
-                                android:textSize="13sp"
+                                android:textSize="12sp"
                                 style="@style/Widget.MaterialComponents.Button.TextButton" />
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Zusammenfassung-Intervall (Sekunden)"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_summary_interval"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="number"
-                                    android:textSize="16sp" />
+                                    android:textSize="13sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <CheckBox
                                 android:id="@+id/cb_transcript_show_local"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 android:text="Eigene Stimme im Live-Transkript anzeigen"
-                                android:textSize="15sp" />
+                                android:textSize="13sp" />
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Anzahl Favoriten (Schnellwahl)"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
                                 <AutoCompleteTextView
                                     android:id="@+id/actv_favourite_count"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="none"
-                                    android:textSize="16sp" />
+                                    android:textSize="13sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <Button
                                 android:id="@+id/btn_contact_suggestions"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 android:text="Vorgeschlagene Kontakte"
-                                android:textSize="15sp"
+                                android:textSize="13sp"
                                 style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
-                            <!-- Answering-machine settings; UI only, not yet active. -->
+                            <!-- Answering-machine settings. Persisted but not
+                                 yet wired into the call flow — the checkbox
+                                 is harmless until the auto-pickup runtime
+                                 lands in a later change. -->
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Anrufbeantworter (in Vorbereitung)"
-                                android:textSize="15sp"
+                                android:textSize="13sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/text_primary"
-                                android:layout_marginTop="20dp"
+                                android:layout_marginTop="14dp"
                                 android:paddingBottom="2dp" />
 
                             <TextView
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:text="Diese Funktion ist noch nicht aktiv. Werte werden gespeichert, damit sie später nicht erneut eingegeben werden müssen."
-                                android:textSize="13sp"
+                                android:textSize="11sp"
                                 android:textColor="@color/status_neutral"
-                                android:paddingBottom="6dp" />
+                                android:paddingBottom="4dp" />
 
                             <CheckBox
                                 android:id="@+id/cb_mailbox_enabled"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Anrufbeantworter aktiv"
-                                android:textSize="15sp" />
+                                android:textSize="13sp" />
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Annehmen nach (Sekunden)"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_mailbox_timeout"
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="number"
-                                    android:textSize="16sp" />
+                                    android:textSize="13sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Begrüßungstext"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_mailbox_greeting"
@@ -488,16 +473,16 @@
                                     android:gravity="top|start"
                                     android:minLines="3"
                                     android:maxLines="8"
-                                    android:textSize="14sp" />
+                                    android:textSize="12sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
                             <Button
                                 android:id="@+id/btn_diagnostics"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="14dp"
+                                android:layout_marginTop="10dp"
                                 android:text="Diagnose-Log anzeigen"
-                                android:textSize="14sp"
+                                android:textSize="12sp"
                                 style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
                         </LinearLayout>
@@ -505,32 +490,80 @@
                         <Button
                             android:id="@+id/btn_register"
                             android:layout_width="match_parent"
-                            android:layout_height="64dp"
-                            android:layout_marginTop="16dp"
+                            android:layout_height="52dp"
+                            android:layout_marginTop="10dp"
                             android:text="Verbinden"
-                            android:textSize="20sp"
+                            android:textSize="17sp"
                             android:backgroundTint="@color/accent" />
 
                         <Button
                             android:id="@+id/btn_logout"
                             android:layout_width="match_parent"
-                            android:layout_height="60dp"
-                            android:layout_marginTop="10dp"
+                            android:layout_height="48dp"
+                            android:layout_marginTop="6dp"
                             android:text="Abmelden und Beenden"
-                            android:textSize="18sp"
+                            android:textSize="15sp"
                             android:backgroundTint="@color/mic_off" />
 
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 
-                <!-- ───── Kontakte (visible once registered) ───── -->
+                <!-- Recent calls card -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/card_recent_calls"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/surface">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Letzte Anrufe"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:paddingTop="12dp"
+                            android:paddingBottom="4dp" />
+
+                        <LinearLayout
+                            android:id="@+id/ll_call_history"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical" />
+
+                        <TextView
+                            android:id="@+id/tv_no_calls"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Noch keine Anrufe"
+                            android:textSize="14sp"
+                            android:textColor="@color/status_neutral"
+                            android:gravity="center"
+                            android:padding="20dp"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
+                <!-- Contacts card -->
                 <androidx.cardview.widget.CardView
                     android:id="@+id/card_contacts"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:visibility="gone"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="2dp"
                     app:cardBackgroundColor="@color/surface">
 
                     <LinearLayout
@@ -542,13 +575,13 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="Kontakte"
-                            android:textSize="20sp"
+                            android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_primary"
-                            android:paddingStart="20dp"
-                            android:paddingEnd="20dp"
-                            android:paddingTop="18dp"
-                            android:paddingBottom="6dp" />
+                            android:paddingStart="14dp"
+                            android:paddingEnd="14dp"
+                            android:paddingTop="12dp"
+                            android:paddingBottom="4dp" />
 
                         <LinearLayout
                             android:id="@+id/ll_contacts"
@@ -561,10 +594,10 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="Keine Kontakte gefunden"
-                            android:textSize="16sp"
+                            android:textSize="14sp"
                             android:textColor="@color/status_neutral"
                             android:gravity="center"
-                            android:padding="24dp"
+                            android:padding="20dp"
                             android:visibility="gone" />
 
                     </LinearLayout>
@@ -573,252 +606,143 @@
             </LinearLayout>
         </ScrollView>
 
-        <!--
-            MIDDLE COLUMN — Favoriten 2x2 grid (compact, one slot per
-            important person) sitting above a slim Letzte Anrufe list.
-            Both cards are visible from the start; the Letzte list shows
-            its placeholder until the first call is logged.
-        -->
+        <!-- Right column: dialer + call button -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="2"
-            android:layout_marginEnd="10dp"
+            android:layout_weight="1"
             android:orientation="vertical">
 
             <androidx.cardview.widget.CardView
-                android:id="@+id/card_favourites"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/surface">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="14dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Favoriten"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:paddingBottom="6dp" />
-
-                    <!--
-                        Favourite tiles are inflated programmatically into
-                        this container. Count is driven by KEY_FAVOURITE_COUNT
-                        (2 / 4 / 6); see MainActivity.refreshFavourites().
-                        The previous static GridLayout occasionally rendered
-                        as "2 enlarged buttons" after a refresh — going
-                        programmatic with simple horizontal rows avoids
-                        whatever measurement edge case GridLayout was
-                        hitting and lets the count change without touching
-                        XML.
-                    -->
-                    <LinearLayout
-                        android:id="@+id/ll_favourites"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical" />
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/card_recent_calls"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:visibility="gone"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
+                app:cardCornerRadius="10dp"
+                app:cardElevation="2dp"
                 app:cardBackgroundColor="@color/surface">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:padding="6dp">
 
-                    <TextView
+                    <!-- Number display row -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Letzte Anrufe"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="4dp" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
-                    <ScrollView
+                        <Button
+                            android:id="@+id/btn_plus"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:text="+"
+                            android:textSize="18sp"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:padding="0dp"
+                            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+                        <EditText
+                            android:id="@+id/et_phone"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="+49..."
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:inputType="text"
+                            android:imeOptions="actionDone"
+                            android:focusable="true"
+                            android:focusableInTouchMode="true"
+                            android:background="@android:color/transparent"
+                            android:textColor="@color/text_primary" />
+
+                        <Button
+                            android:id="@+id/btn_delete"
+                            android:layout_width="44dp"
+                            android:layout_height="40dp"
+                            android:text="&#x232B;"
+                            android:textSize="16sp"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:padding="0dp"
+                            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+                    </LinearLayout>
+
+                    <!--
+                        Dialpad. Each button's height is explicitly 0dp so the
+                        rowWeight=1 from the DialButton style actually
+                        distributes the GridLayout's height across all 4 rows.
+                        With the style's 64dp the GridLayout was over-requesting
+                        and Android was clipping rows 2–4 on smaller landscape
+                        screens (only "1 2 3" was visible).
+                    -->
+                    <GridLayout
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
-                        android:layout_weight="1">
+                        android:layout_weight="1"
+                        android:layout_marginTop="4dp"
+                        android:columnCount="3"
+                        android:rowCount="4">
 
-                        <LinearLayout
-                            android:id="@+id/ll_call_history"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical" />
+                        <Button android:id="@+id/btn1" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="1" />
+                        <Button android:id="@+id/btn2" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="2" />
+                        <Button android:id="@+id/btn3" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="3" />
+                        <Button android:id="@+id/btn4" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="4" />
+                        <Button android:id="@+id/btn5" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="5" />
+                        <Button android:id="@+id/btn6" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="6" />
+                        <Button android:id="@+id/btn7" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="7" />
+                        <Button android:id="@+id/btn8" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="8" />
+                        <Button android:id="@+id/btn9" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="9" />
+                        <Button android:id="@+id/btn_star" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="*" />
+                        <Button android:id="@+id/btn0" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="0" />
+                        <Button android:id="@+id/btn_hash" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:text="#" />
 
-                    </ScrollView>
+                    </GridLayout>
+
+                    <!--
+                        STT test affordance is dev-only; hidden in landscape so
+                        the dialpad can take the full vertical space. Still in
+                        binding so the activity wires its listener unconditionally.
+                    -->
+                    <Button
+                        android:id="@+id/btn_test_stt"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:visibility="gone"
+                        android:text="STT Test (test.wav)"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
                     <TextView
-                        android:id="@+id/tv_no_calls"
+                        android:id="@+id/tv_test_result"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Noch keine Anrufe"
-                        android:textSize="15sp"
-                        android:textColor="@color/status_neutral"
-                        android:gravity="center"
-                        android:padding="18dp"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_primary"
+                        android:minHeight="0dp"
                         android:visibility="gone" />
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- Call button pinned at the bottom -->
+            <Button
+                android:id="@+id/btn_call"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_marginTop="8dp"
+                android:text="Anrufen"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:backgroundTint="@color/call_green"
+                android:elevation="4dp" />
+
         </LinearLayout>
 
-        <!--
-            RIGHT COLUMN — Dialpad. Compact compared to the previous
-            half-screen-wide version, because it's the least-used input
-            method for the kiosk user: most calls go through Favoriten
-            or Kontakte. The number display + 3x4 grid keep the existing
-            IDs so the activity wires them up unchanged.
-        -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="2"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
-            app:cardBackgroundColor="@color/surface">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical"
-                android:padding="14dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Tastatur"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:paddingBottom="6dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <Button
-                        android:id="@+id/btn_plus"
-                        android:layout_width="44dp"
-                        android:layout_height="48dp"
-                        android:text="+"
-                        android:textSize="22sp"
-                        android:minWidth="0dp"
-                        android:minHeight="0dp"
-                        style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-                    <EditText
-                        android:id="@+id/et_phone"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:hint="+49..."
-                        android:textSize="26sp"
-                        android:textStyle="bold"
-                        android:inputType="text"
-                        android:imeOptions="actionDone"
-                        android:focusable="true"
-                        android:focusableInTouchMode="true"
-                        android:background="@android:color/transparent"
-                        android:textColor="@color/text_primary" />
-
-                    <Button
-                        android:id="@+id/btn_delete"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:text="&#x232B;"
-                        android:textSize="20sp"
-                        android:minWidth="0dp"
-                        android:minHeight="0dp"
-                        style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-                </LinearLayout>
-
-                <GridLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"
-                    android:layout_marginTop="8dp"
-                    android:columnCount="3"
-                    android:rowCount="4"
-                    android:useDefaultMargins="false">
-
-                    <Button android:id="@+id/btn1" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="1" />
-                    <Button android:id="@+id/btn2" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="2" />
-                    <Button android:id="@+id/btn3" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="3" />
-                    <Button android:id="@+id/btn4" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="4" />
-                    <Button android:id="@+id/btn5" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="5" />
-                    <Button android:id="@+id/btn6" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="6" />
-                    <Button android:id="@+id/btn7" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="7" />
-                    <Button android:id="@+id/btn8" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="8" />
-                    <Button android:id="@+id/btn9" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="9" />
-                    <Button android:id="@+id/btn_star" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="*" />
-                    <Button android:id="@+id/btn0" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="0" />
-                    <Button android:id="@+id/btn_hash" style="@style/DialButton" android:layout_height="0dp" android:minHeight="0dp" android:layout_rowWeight="1" android:layout_columnWeight="1" android:gravity="center" android:textSize="32sp" android:text="#" />
-
-                </GridLayout>
-
-                <!-- Dev-only STT test affordance — hidden in the kiosk layout. -->
-                <Button
-                    android:id="@+id/btn_test_stt"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:text="STT Test (test.wav)"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
-                <TextView
-                    android:id="@+id/tv_test_result"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textSize="13sp"
-                    android:textColor="@color/text_primary"
-                    android:minHeight="0dp"
-                    android:visibility="gone" />
-
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
     </LinearLayout>
-
-    <!-- Global Anrufen — same physical position regardless of which
-         column was used to choose a target. -->
-    <Button
-        android:id="@+id/btn_call"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="12dp"
-        android:layout_marginBottom="12dp"
-        android:text="Anrufen"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:backgroundTint="@color/call_green"
-        android:elevation="4dp" />
 
 </LinearLayout>

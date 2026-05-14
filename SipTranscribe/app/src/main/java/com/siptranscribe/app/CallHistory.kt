@@ -3,18 +3,47 @@ package com.siptranscribe.app
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 object CallHistory {
 
     private const val PREFS = "call_history"
     private const val KEY = "records"
-    private const val MAX = 30
+    /** Hard ceiling so a runaway scenario can't fill the prefs file with
+     *  millions of records. The real retention boundary is [DEFAULT_RETENTION_DAYS]. */
+    private const val MAX = 500
+    const val DEFAULT_RETENTION_DAYS = 90
 
     fun add(context: Context, record: CallRecord) {
         val list = load(context).toMutableList()
         list.add(0, record)
         if (list.size > MAX) list.subList(MAX, list.size).clear()
         save(context, list)
+    }
+
+    fun remove(context: Context, id: Long) {
+        val list = load(context).filter { it.id != id }
+        save(context, list)
+        CallArchiveStore.delete(context, id)
+    }
+
+    /**
+     * Drops records older than [retentionDays] and their encrypted archive
+     * files. Also wipes any archive files whose metadata is missing (orphans
+     * from a corrupted save or earlier crash). Cheap enough to run on every
+     * MainActivity start.
+     */
+    fun purgeExpired(context: Context, retentionDays: Int = DEFAULT_RETENTION_DAYS) {
+        val cutoff = System.currentTimeMillis() -
+            TimeUnit.DAYS.toMillis(retentionDays.toLong())
+        val records = load(context)
+        val kept = records.filter { it.startTime >= cutoff }
+        val dropped = records - kept.toSet()
+        if (dropped.isNotEmpty()) {
+            dropped.forEach { CallArchiveStore.delete(context, it.id) }
+            save(context, kept)
+        }
+        CallArchiveStore.purgeOrphans(context, kept.map { it.id }.toSet())
     }
 
     fun load(context: Context): List<CallRecord> {

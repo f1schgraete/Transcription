@@ -47,6 +47,10 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.lifecycle:lifecycle-service:2.7.0'
+    // Encrypts per-call transcript/summary archives at rest. Alpha is the
+    // newest available coordinate; APIs we use (MasterKey, EncryptedFile)
+    // are stable across 1.1.0-alpha0[3-7].
+    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
     // Azure Cognitive Services Speech SDK — streams PCM to Azure via PushAudioInputStream.
     implementation 'com.microsoft.cognitiveservices.speech:client-sdk:1.37.0'
 }

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Single-contact one-tap-call widget. Rendered via RemoteViews so the
+  layout has to stay strictly within the AppWidget allowed-view set:
+  LinearLayout / RelativeLayout / FrameLayout / TextView / ImageView /
+  ProgressBar / Button. Plain backgrounds are also restricted, hence
+  the drawable shape rather than a CardView.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="10dp"
+    android:background="@drawable/widget_background">
+
+    <TextView
+        android:id="@+id/widget_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_on_dark"
+        android:gravity="center"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:text="Kontakt" />
+
+    <TextView
+        android:id="@+id/widget_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="@color/text_on_dark_secondary"
+        android:gravity="center"
+        android:paddingTop="2dp"
+        android:text="Anrufen" />
+
+</LinearLayout>

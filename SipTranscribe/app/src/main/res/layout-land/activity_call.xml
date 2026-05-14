@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Tablet call screen.
-  Sized for ~1500dp × ~900dp landscape (e.g. Lenovo Tab Plus 2000×1200 px).
-  Layout mirrors the phone-landscape variant: a compact single-row header,
-  a transcript/summary split that takes most of the vertical space, and
-  a single horizontal row of action buttons at the bottom. Earlier 100dp+
-  buttons were eating half the screen on this device — the new ones are
-  ~72dp and laid out side-by-side.
+  Phone landscape call screen.
+  Compact header with caller / status / duration on a single row.
+  Middle: scrollable transcript on the left, periodically-refreshed summary on the right.
+  Bottom: action buttons laid out horizontally to save vertical space.
 -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -14,14 +11,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/call_background"
-    android:padding="14dp">
+    android:padding="10dp">
 
     <!--
-        Compact header row. Caller name dominates so the user identifies
-        the call at a glance. Status text is small — it changes value as
-        the call progresses (Klingelt → Aktiver Anruf → Anruf beendet)
-        and we keep it visually quiet so it doesn't pull attention away
-        from the transcript.
+        Compact header row.
+        Caller name dominates so the user identifies the call at a glance.
+        Status text stays small — it changes value as the call progresses
+        (Klingelt → Aktiver Anruf → Anruf beendet) so we keep it visually
+        quiet to avoid drawing the eye away from the transcript.
     -->
     <LinearLayout
         android:id="@+id/header_row"
@@ -38,7 +35,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="32sp"
+            android:textSize="28sp"
             android:textStyle="bold"
             android:textColor="@color/text_on_dark"
             android:maxLines="1"
@@ -48,23 +45,23 @@
             android:id="@+id/tv_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
+            android:textSize="13sp"
             android:textColor="@color/text_on_dark_secondary"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp" />
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp" />
 
         <TextView
             android:id="@+id/tv_duration"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="00:00"
-            android:textSize="22sp"
+            android:textSize="18sp"
             android:textColor="@color/text_on_dark_secondary"
             android:fontFamily="monospace" />
 
     </LinearLayout>
 
-    <!-- Outgoing ringing: full-width hang-up. -->
+    <!-- Outgoing ringing: full-width hang-up -->
     <LinearLayout
         android:id="@+id/layout_calling"
         android:layout_width="0dp"
@@ -79,19 +76,15 @@
         <Button
             android:id="@+id/btn_hang_up_ringing"
             android:layout_width="match_parent"
-            android:layout_height="72dp"
+            android:layout_height="56dp"
             android:text="Auflegen"
-            android:textSize="22sp"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:backgroundTint="@color/call_red" />
 
     </LinearLayout>
 
-    <!--
-        Incoming call: Annehmen on the left and bigger (2:1 weight) so it
-        is unambiguously the primary action. Ablehnen is smaller so an
-        accidental tap is much less likely to reject a real call.
-    -->
+    <!-- Incoming: Annehmen (wider/greener, left) + Ablehnen (right) -->
     <LinearLayout
         android:id="@+id/layout_incoming"
         android:layout_width="0dp"
@@ -106,31 +99,31 @@
         <Button
             android:id="@+id/btn_accept"
             android:layout_width="0dp"
-            android:layout_height="80dp"
+            android:layout_height="64dp"
             android:layout_weight="2"
             android:text="Annehmen"
-            android:textSize="26sp"
+            android:textSize="20sp"
             android:textStyle="bold"
             android:backgroundTint="@color/call_green"
-            android:layout_marginEnd="14dp" />
+            android:layout_marginEnd="10dp" />
 
         <Button
             android:id="@+id/btn_decline"
             android:layout_width="0dp"
-            android:layout_height="68dp"
+            android:layout_height="56dp"
             android:layout_weight="1"
             android:text="Ablehnen"
-            android:textSize="20sp"
+            android:textSize="16sp"
             android:backgroundTint="@color/call_red" />
 
     </LinearLayout>
 
     <!--
-        Active call: a single Auflegen button — no Speaker on tablet
-        because the device has only one (omnidirectional) speaker and the
-        system volume rocker already controls call audio. btn_loeschen
-        overlays Auflegen after the call ends, keeping the action in the
-        same physical spot on screen.
+        Active: speaker (left, narrow) + hang up (right, dominant).
+        Hang-up has twice the weight of Speaker because it is the only
+        button that must be impossible to miss — Speaker is occasionally
+        useful for the caregiver, but the elderly user only ever needs
+        Auflegen. btn_loeschen overlays it after the call ends.
     -->
     <LinearLayout
         android:id="@+id/layout_active"
@@ -144,26 +137,39 @@
         app:layout_constraintEnd_toEndOf="parent">
 
         <Button
+            android:id="@+id/btn_speaker"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_weight="1"
+            android:text="Lautsprecher"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:backgroundTint="@color/mic_off"
+            android:layout_marginEnd="10dp" />
+
+        <Button
             android:id="@+id/btn_hang_up"
-            android:layout_width="match_parent"
-            android:layout_height="72dp"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_weight="2"
             android:text="Auflegen"
-            android:textSize="26sp"
+            android:textSize="22sp"
             android:textStyle="bold"
             android:backgroundTint="@color/call_red" />
 
         <Button
             android:id="@+id/btn_loeschen"
-            android:layout_width="match_parent"
-            android:layout_height="72dp"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:layout_weight="2"
             android:text="Schlie&#xDF;en"
-            android:textSize="22sp"
+            android:textSize="20sp"
             android:visibility="gone"
             android:backgroundTint="@color/mic_off" />
 
     </LinearLayout>
 
-    <!-- Sits at the top of whichever button layout is currently visible. -->
+    <!-- Barrier sits at the top of whichever button layout is currently visible. -->
     <androidx.constraintlayout.widget.Barrier
         android:id="@+id/barrier_buttons"
         android:layout_width="wrap_content"
@@ -172,20 +178,20 @@
         app:constraint_referenced_ids="layout_calling,layout_incoming,layout_active" />
 
     <!--
-        Main row: transcript left, summary right. 2:1 split — the
-        transcript gets two-thirds of the width because that is what the
-        hearing-impaired user actually reads. The summary on the right
-        is a caregiver-facing reference and can sit comfortably in the
-        remaining third. Both cards stay visible for the entire call;
-        only the text inside ever changes.
+        Main row: transcript left, summary right.
+        3:2 weight split favours the transcript because that is what the
+        deaf user actually reads to follow the call. The summary card
+        stays visible for the whole call — only its content ever changes,
+        never its size or position. We deliberately do not animate the
+        swap so the screen remains visually stable.
     -->
     <LinearLayout
         android:id="@+id/transcript_row"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:orientation="horizontal"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="10dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
         app:layout_constraintTop_toBottomOf="@id/header_row"
         app:layout_constraintBottom_toTopOf="@id/barrier_buttons"
         app:layout_constraintStart_toStartOf="parent"
@@ -195,22 +201,22 @@
             android:id="@+id/card_transcript"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="2"
-            app:cardCornerRadius="14dp"
+            android:layout_weight="3"
+            app:cardCornerRadius="10dp"
             app:cardBackgroundColor="@color/transcript_bg"
-            app:cardElevation="3dp">
+            app:cardElevation="2dp">
 
             <ScrollView
                 android:id="@+id/scroll_history"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="18dp">
+                android:padding="14dp">
 
                 <TextView
                     android:id="@+id/tv_history"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="30sp"
+                    android:textSize="22sp"
                     android:textColor="@color/text_primary"
                     android:lineSpacingMultiplier="1.4" />
 
@@ -221,28 +227,28 @@
             android:id="@+id/card_summary"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:layout_marginStart="12dp"
-            app:cardCornerRadius="14dp"
+            android:layout_weight="2"
+            android:layout_marginStart="8dp"
+            app:cardCornerRadius="10dp"
             app:cardBackgroundColor="@color/transcript_bg"
-            app:cardElevation="3dp">
+            app:cardElevation="2dp">
 
             <!--
-                Summary should fit on a single screen. Deliberately NOT in
-                a ScrollView: if the analyser produces too much text the
-                view clips at the bottom, which is the signal to shorten
-                the prompt's output rather than make the user scroll a
-                second pane.
+                The summary should fit on a single screen. Deliberately NOT
+                wrapped in a ScrollView: if the analyser produces too much
+                text the TextView clips at the bottom, which is the signal
+                to shorten the prompt's output rather than to make the user
+                scroll a second pane.
             -->
             <TextView
                 android:id="@+id/tv_summary"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="18dp"
+                android:padding="14dp"
                 android:text="Zusammenfassung erscheint, sobald genug gesprochen wurde."
-                android:textSize="18sp"
+                android:textSize="15sp"
                 android:textColor="@color/text_primary"
-                android:lineSpacingMultiplier="1.35" />
+                android:lineSpacingMultiplier="1.3" />
 
         </androidx.cardview.widget.CardView>
     </LinearLayout>

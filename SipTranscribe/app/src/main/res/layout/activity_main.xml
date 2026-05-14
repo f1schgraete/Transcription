@@ -269,6 +269,15 @@
                                 android:textSize="18sp" />
                         </com.google.android.material.textfield.TextInputLayout>
 
+                        <CheckBox
+                            android:id="@+id/cb_use_srv"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="SRV-Lookup verwenden (RFC 3263)"
+                            android:textSize="14sp"
+                            android:checked="true" />
+
                         <!-- ── KI: Spracherkennung + Zusammenfassung ── -->
                         <TextView
                             android:layout_width="wrap_content"
@@ -363,6 +372,117 @@
                             android:textSize="13sp"
                             style="@style/Widget.MaterialComponents.Button.TextButton" />
 
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Zusammenfassung-Intervall (Sekunden)"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_summary_interval"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:textSize="16sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <CheckBox
+                            android:id="@+id/cb_transcript_show_local"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="Eigene Stimme im Live-Transkript anzeigen"
+                            android:textSize="14sp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Anzahl Favoriten (Schnellwahl)"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                            <AutoCompleteTextView
+                                android:id="@+id/actv_favourite_count"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="none"
+                                android:textSize="14sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <Button
+                            android:id="@+id/btn_contact_suggestions"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="Vorgeschlagene Kontakte"
+                            android:textSize="14sp"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                        <!-- Answering-machine settings; UI only, not yet active. -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Anrufbeantworter (in Vorbereitung)"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            android:layout_marginTop="18dp"
+                            android:paddingBottom="2dp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Diese Funktion ist noch nicht aktiv. Werte werden gespeichert, damit sie später nicht erneut eingegeben werden müssen."
+                            android:textSize="12sp"
+                            android:textColor="@color/status_neutral"
+                            android:paddingBottom="4dp" />
+
+                        <CheckBox
+                            android:id="@+id/cb_mailbox_enabled"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Anrufbeantworter aktiv"
+                            android:textSize="14sp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Annehmen nach (Sekunden)"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_mailbox_timeout"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:textSize="16sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Begrüßungstext"
+                            android:layout_marginTop="8dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_mailbox_greeting"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textMultiLine"
+                                android:gravity="top|start"
+                                android:minLines="3"
+                                android:maxLines="8"
+                                android:textSize="13sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <Button
+                            android:id="@+id/btn_diagnostics"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="Diagnose-Log anzeigen"
+                            android:textSize="13sp"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
                     </LinearLayout>
 
                     <Button
@@ -436,6 +556,54 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- Contacts card (system address book) -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_contacts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/surface">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Kontakte"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="8dp" />
+
+                    <LinearLayout
+                        android:id="@+id/ll_contacts"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                    <TextView
+                        android:id="@+id/tv_no_contacts"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Keine Kontakte gefunden"
+                        android:textSize="16sp"
+                        android:textColor="@color/status_neutral"
+                        android:gravity="center"
+                        android:padding="24dp"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
             <!-- ── Phone number entry ── -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
@@ -474,7 +642,10 @@
                             android:hint="+49..."
                             android:textSize="32sp"
                             android:textStyle="bold"
-                            android:inputType="phone"
+                            android:inputType="text"
+                            android:imeOptions="actionDone"
+                            android:focusable="true"
+                            android:focusableInTouchMode="true"
                             android:background="@android:color/transparent"
                             android:textColor="@color/text_primary" />
 

@@ -31,6 +31,39 @@ class MainActivity : AppCompatActivity() {
     private lateinit var prefs: SharedPreferences
     private var testTranscriber: TranscriptionManager? = null
 
+    /**
+     * When the user picks a callable target (recent call or contact) we put
+     * the *name* in the visible phone field for readability, and keep the
+     * actual number to dial here. Cleared as soon as the user touches the
+     * dialpad or types manually, so freshly-entered digits behave normally.
+     */
+    private var pendingCallNumber: String? = null
+    private var suppressPhoneTextWatcher = false
+
+    /**
+     * Auto-dial from a widget tap. We can't makeCall() right away when the
+     * SIP core isn't registered yet — store the (number, displayName) pair
+     * and fire it from the registration callback once status flips to OK.
+     * Null while no auto-dial is pending.
+     */
+    private var pendingAutoDial: Pair<String, String>? = null
+
+    /** Slot index (0..3) being configured by the currently-running contact
+     *  picker. Set when we launch [favouritePicker], read by the callback,
+     *  then reset to -1. */
+    private var currentFavouriteSlot: Int = -1
+
+    private val favouritePicker = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.data
+        val slot = currentFavouriteSlot
+        currentFavouriteSlot = -1
+        if (result.resultCode == RESULT_OK && uri != null && slot in 0..3) {
+            saveFavouriteFromUri(slot, uri)
+        }
+    }
+
     companion object {
         const val PREFS = "sip_prefs"
         const val KEY_USER = "username"
@@ -49,8 +82,43 @@ class MainActivity : AppCompatActivity() {
         const val KEY_AZURE_DEPLOYMENT = "azure_deployment"
         const val KEY_OWNER_NAMES = "owner_names"
         const val KEY_SUMMARY_PROMPT = "summary_prompt"
+        const val KEY_USE_SRV = "use_dns_srv"
+        const val KEY_SUMMARY_INTERVAL = "summary_interval_seconds"
+        /** When false (the default), the elderly user's own voice doesn't
+         *  appear in the live transcript pane. We still record and feed
+         *  both directions to the analyser so the summary stays useful. */
+        const val KEY_TRANSCRIPT_SHOW_LOCAL = "transcript_show_local"
+
+        /** Number of favourite slots displayed in the middle column.
+         *  Clamped to [FAVOURITE_COUNT_OPTIONS] at read+write time. The
+         *  upper bound is also the cap on how many name/number pairs we
+         *  read out of prefs — values for slots beyond the cap are
+         *  preserved across changes (so dropping 6→4 and going back to 6
+         *  doesn't lose your work) but invisible. */
+        const val KEY_FAVOURITE_COUNT = "favourite_count"
+        const val DEFAULT_FAVOURITE_COUNT = 4
+        val FAVOURITE_COUNT_OPTIONS = intArrayOf(2, 4, 6)
+        const val MAX_FAVOURITE_SLOTS = 6
         const val DEFAULT_OWNER_NAMES =
             "Waltraud, Walde, Babu, Dr. Hirsch, Waltraud Hirsch"
+        /** Seconds between in-call summary refreshes. Bottoming out at 5 s
+         *  keeps us from hammering Azure on a misconfigured value. */
+        const val DEFAULT_SUMMARY_INTERVAL_SECONDS = 25
+        const val MIN_SUMMARY_INTERVAL_SECONDS = 5
+
+        // Answering-machine settings. The auto-pickup runtime is intentionally
+        // not wired up yet — these keys just persist what the caregiver
+        // configured so the toggle can be flipped on later without losing
+        // values. KEY_MAILBOX_ENABLED stays false by default.
+        const val KEY_MAILBOX_ENABLED = "mailbox_enabled"
+        const val KEY_MAILBOX_TIMEOUT_SECONDS = "mailbox_timeout_seconds"
+        const val KEY_MAILBOX_GREETING_TEXT = "mailbox_greeting_text"
+        const val DEFAULT_MAILBOX_TIMEOUT_SECONDS = 20
+        const val DEFAULT_MAILBOX_GREETING_TEXT =
+            "Guten Tag, hier ist der Anschluss von Waltraud Hirsch. " +
+            "Ich kann gerade nicht ans Telefon kommen. " +
+            "Bitte hinterlassen Sie eine Nachricht nach dem Signalton."
+
         private const val REQ_PERMS = 101
     }
 
@@ -62,6 +130,9 @@ class MainActivity : AppCompatActivity() {
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         loadSettings()
         requestRequiredPermissions()
+        // Drop anything older than 90 days so the prefs file and the
+        // encrypted-archive directory don't grow without bound. Cheap.
+        CallHistory.purgeExpired(this)
 
         // Dialpad digit buttons
         val digitButtons = mapOf(
@@ -71,24 +142,41 @@ class MainActivity : AppCompatActivity() {
             binding.btn9 to "9", binding.btnStar to "*", binding.btnHash to "#"
         )
         digitButtons.forEach { (btn, digit) ->
-            btn.setOnClickListener { binding.etPhone.append(digit) }
+            btn.setOnClickListener { appendToPhone(digit) }
         }
 
-        binding.btnPlus.setOnClickListener { binding.etPhone.append("+") }
+        binding.btnPlus.setOnClickListener { appendToPhone("+") }
 
         binding.btnDelete.setOnClickListener {
-            val t = binding.etPhone.text
-            if (t != null && t.isNotEmpty()) t.delete(t.length - 1, t.length)
+            if (pendingCallNumber != null) {
+                // Field shows a contact / history name. "Delete one character"
+                // doesn't make sense there — interpret it as "start over".
+                clearCallTarget()
+            } else {
+                val t = binding.etPhone.text
+                if (t != null && t.isNotEmpty()) t.delete(t.length - 1, t.length)
+            }
         }
         binding.btnDelete.setOnLongClickListener {
-            binding.etPhone.text?.clear()
+            clearCallTarget()
             true
         }
         // Long-press 0 → + (standard phone convention)
         binding.btn0.setOnLongClickListener {
-            binding.etPhone.append("+")
+            appendToPhone("+")
             true
         }
+
+        // Manual typing into the phone field invalidates any name-from-pick
+        // override — once the user starts typing, what they see is what gets
+        // dialled.
+        binding.etPhone.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+            override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                if (!suppressPhoneTextWatcher) pendingCallNumber = null
+            }
+        })
 
         // Advanced settings toggle
         binding.btnAdvanced.setOnClickListener {
@@ -119,15 +207,39 @@ class MainActivity : AppCompatActivity() {
         )
         binding.actvMediaEnc.setAdapter(mediaEncAdapter)
 
+        // Favourite-count dropdown. Selection is applied live so the
+        // caregiver sees the new tile count in the middle column without
+        // tapping Verbinden first.
+        val favCountAdapter = ArrayAdapter(
+            this, android.R.layout.simple_dropdown_item_1line,
+            resources.getStringArray(R.array.favourite_counts)
+        )
+        binding.actvFavouriteCount.setAdapter(favCountAdapter)
+        binding.actvFavouriteCount.setOnItemClickListener { _, _, _, _ ->
+            val n = binding.actvFavouriteCount.text.toString().toIntOrNull()
+                ?: DEFAULT_FAVOURITE_COUNT
+            val clamped = if (n in FAVOURITE_COUNT_OPTIONS) n else DEFAULT_FAVOURITE_COUNT
+            prefs.edit().putInt(KEY_FAVOURITE_COUNT, clamped).apply()
+            refreshFavourites()
+        }
+
         binding.btnRegister.setOnClickListener { saveAndRegister() }
         binding.btnLogout.setOnClickListener { confirmAndLogout() }
         binding.btnResetPrompt.setOnClickListener {
             binding.etSummaryPrompt.setText(ConversationAnalyzer.DEFAULT_SYSTEM_PROMPT)
         }
+        binding.btnContactSuggestions.setOnClickListener {
+            startActivity(Intent(this, ContactSuggestionsActivity::class.java))
+        }
+        binding.btnDiagnostics.setOnClickListener { showDiagnosticsDialog() }
         setupSttTest()
 
         binding.btnCall.setOnClickListener {
-            val number = binding.etPhone.text.toString().trim()
+            // If the user picked a name from history or contacts the visible
+            // text is the display name; the actual number lives in
+            // pendingCallNumber. Manual typing clears that override so the
+            // typed digits are dialled instead.
+            val number = pendingCallNumber ?: binding.etPhone.text.toString().trim()
             if (number.isEmpty()) {
                 toast("Bitte eine Nummer eingeben")
                 return@setOnClickListener
@@ -153,6 +265,23 @@ class MainActivity : AppCompatActivity() {
                     if (ok) getColor(R.color.status_ok) else getColor(R.color.status_error)
                 )
                 updateRegistrationUI(ok)
+
+                // A widget tap can land here before the core is registered.
+                // Fire the queued call as soon as registration succeeds, or
+                // drop it (with a toast) if it definitively fails so the
+                // user isn't left wondering.
+                val pending = pendingAutoDial
+                if (pending != null) {
+                    if (ok) {
+                        pendingAutoDial = null
+                        makeCall(pending.first)
+                        clearCallTarget()
+                    } else if (msg.startsWith("Registrierung fehlgeschlagen")) {
+                        pendingAutoDial = null
+                        clearCallTarget()
+                        toast("Anruf konnte nicht gestartet werden: keine SIP-Verbindung.")
+                    }
+                }
             }
         }
 
@@ -162,13 +291,202 @@ class MainActivity : AppCompatActivity() {
             binding.tvStatus.setTextColor(getColor(R.color.status_ok))
         }
         updateRegistrationUI(LinphoneManager.isRegistered)
+
+        refreshFavourites()
+        autoLoginIfPossible()
+        handleAutoDialIntent(intent)
+    }
+
+    private fun keyFavouriteName(slot: Int) = "favourite_${slot}_name"
+    private fun keyFavouriteNumber(slot: Int) = "favourite_${slot}_number"
+
+    /** Validates the stored favourite count against [FAVOURITE_COUNT_OPTIONS],
+     *  falling back to the default if the prefs file has a stale or invalid
+     *  value (e.g. an older build wrote one we no longer accept). */
+    private fun currentFavouriteCount(): Int {
+        val raw = prefs.getInt(KEY_FAVOURITE_COUNT, DEFAULT_FAVOURITE_COUNT)
+        return if (raw in FAVOURITE_COUNT_OPTIONS) raw else DEFAULT_FAVOURITE_COUNT
+    }
+
+    /**
+     * Rebuilds the favourites column from scratch each time. We used to have
+     * 4 fixed Button views inside a GridLayout with rowWeight/columnWeight,
+     * but on this Lenovo tablet the GridLayout occasionally collapsed two
+     * rows into one (the "4 buttons became 2 enlarged" report). Building
+     * plain LinearLayout rows of buttons in code sidesteps that
+     * measurement edge case and lets the count be data-driven.
+     *
+     * The middle column is paired (2 buttons per row), so the row layout
+     * is the same shape for 2 / 4 / 6: 1 / 2 / 3 rows respectively. Empty
+     * column slots when count is odd would use a Space; for 2 / 4 / 6 we
+     * never have an odd row.
+     *
+     * Safe to call on layouts without the favourites container (phone
+     * landscape / portrait fallback) — `binding.llFavourites` is null
+     * there and we early-out.
+     */
+    private fun refreshFavourites() {
+        val container = binding.llFavourites ?: return
+        container.removeAllViews()
+
+        val count = currentFavouriteCount()
+        val rows = (count + 1) / 2
+        for (rowIdx in 0 until rows) {
+            val row = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            for (col in 0 until 2) {
+                val slot = rowIdx * 2 + col
+                if (slot >= count) {
+                    row.addView(android.widget.Space(this).apply {
+                        layoutParams = android.widget.LinearLayout.LayoutParams(0, 0, 1f)
+                    })
+                    continue
+                }
+                row.addView(buildFavouriteButton(slot))
+            }
+            container.addView(row)
+        }
+    }
+
+    private fun buildFavouriteButton(slot: Int): View {
+        val btn = layoutInflater.inflate(
+            R.layout.favourite_button, binding.llFavourites, false
+        ) as android.widget.Button
+        // The template's height is 80dp; weight=1 lets the two columns
+        // share the row width evenly.
+        (btn.layoutParams as android.widget.LinearLayout.LayoutParams).weight = 1f
+
+        val name = prefs.getString(keyFavouriteName(slot), null)?.takeIf { it.isNotBlank() }
+        val number = prefs.getString(keyFavouriteNumber(slot), null)?.takeIf { it.isNotBlank() }
+        if (name != null && number != null) {
+            btn.text = name
+            btn.setOnClickListener { setCallTarget(name, number) }
+        } else {
+            btn.text = "+ Hinzufügen"
+            btn.setOnClickListener { launchFavouritePicker(slot) }
+        }
+        btn.setOnLongClickListener {
+            launchFavouritePicker(slot)
+            true
+        }
+        return btn
+    }
+
+    private fun launchFavouritePicker(slot: Int) {
+        currentFavouriteSlot = slot
+        try {
+            favouritePicker.launch(
+                Intent(Intent.ACTION_PICK).apply {
+                    type = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE
+                }
+            )
+        } catch (e: Exception) {
+            currentFavouriteSlot = -1
+            toast("Kontakte-App nicht verfügbar")
+        }
+    }
+
+    private fun saveFavouriteFromUri(slot: Int, uri: android.net.Uri) {
+        try {
+            contentResolver.query(
+                uri,
+                arrayOf(
+                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+                ),
+                null, null, null
+            )?.use { c ->
+                if (c.moveToFirst()) {
+                    val name = c.getString(0)?.trim().orEmpty()
+                    val number = c.getString(1)?.trim().orEmpty()
+                    if (name.isNotBlank() && number.isNotBlank()) {
+                        prefs.edit()
+                            .putString(keyFavouriteName(slot), name)
+                            .putString(keyFavouriteNumber(slot), number)
+                            .apply()
+                        refreshFavourites()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("MainActivity", "saveFavouriteFromUri failed", e)
+        }
+    }
+
+    /**
+     * The activity is single-top so a widget tap on a running app delivers
+     * here instead of re-creating us. Pick up any auto-dial extras that came
+     * with the fresh intent.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAutoDialIntent(intent)
+    }
+
+    /**
+     * Consumes the extras from a [ContactWidgetProvider] tap. If we're
+     * already registered we dial immediately. Otherwise the (number, name)
+     * pair is queued in [pendingAutoDial] and fired from the registration
+     * callback above. The extras are removed from the intent so a later
+     * onResume / onNewIntent doesn't re-dial the same contact.
+     */
+    private fun handleAutoDialIntent(src: Intent?) {
+        val number = src?.getStringExtra(ContactWidgetProvider.EXTRA_AUTO_DIAL_NUMBER)
+            ?.takeIf { it.isNotBlank() } ?: return
+        val name = src.getStringExtra(ContactWidgetProvider.EXTRA_AUTO_DIAL_NAME).orEmpty()
+        src.removeExtra(ContactWidgetProvider.EXTRA_AUTO_DIAL_NUMBER)
+        src.removeExtra(ContactWidgetProvider.EXTRA_AUTO_DIAL_NAME)
+
+        // Show the contact's name in the field so the screen is informative
+        // even if SIP registration takes a beat to come up.
+        setCallTarget(name.ifBlank { number }, number)
+
+        if (LinphoneManager.isRegistered) {
+            makeCall(number)
+            clearCallTarget()
+        } else {
+            pendingAutoDial = number to name
+            // Kick off (or top up) the registration flow so the callback above
+            // has something to fire on. autoLoginIfPossible is a no-op when
+            // already in progress.
+            autoLoginIfPossible()
+        }
+    }
+
+    /**
+     * If the user has previously saved SIP credentials and the core is
+     * not already registered, fire the registration silently so they
+     * don't have to scroll down and tap Verbinden every time the app
+     * (re)launches. Safe to call repeatedly — when nothing's saved or
+     * we're already registered it's a no-op.
+     *
+     * Triggered after [loadSettings] populates the UI fields from prefs,
+     * so [saveAndRegister] (which reads from those fields) sees the
+     * persisted values unchanged.
+     */
+    private fun autoLoginIfPossible() {
+        if (LinphoneManager.isRegistered) return
+        val user = prefs.getString(KEY_USER, "").orEmpty().trim()
+        val pass = prefs.getString(KEY_PASS, "").orEmpty().trim()
+        val domain = prefs.getString(KEY_DOMAIN, "").orEmpty().trim()
+        if (user.isBlank() || pass.isBlank() || domain.isBlank()) return
+        saveAndRegister()
     }
 
     override fun onResume() {
         super.onResume()
-        // Refresh call history whenever returning to this screen (e.g. after a call ends)
+        // Refresh history and contacts whenever returning to this screen
+        // (e.g. after a call ends, or after the user added/removed someone
+        // via the Vorgeschlagene Kontakte → system contacts app flow).
         if (LinphoneManager.isRegistered) {
             refreshCallHistory()
+            refreshContacts()
         }
     }
 
@@ -176,11 +494,89 @@ class MainActivity : AppCompatActivity() {
         if (registered) {
             binding.cardSettings.visibility = View.GONE
             binding.cardRecentCalls.visibility = View.VISIBLE
+            binding.cardContacts.visibility = View.VISIBLE
             refreshCallHistory()
+            refreshContacts()
         } else {
             binding.cardSettings.visibility = View.VISIBLE
             binding.cardRecentCalls.visibility = View.GONE
+            binding.cardContacts.visibility = View.GONE
         }
+    }
+
+    private fun refreshContacts() {
+        val contacts = ContactsLookup.loadAllContacts(this)
+        binding.llContacts.removeAllViews()
+        if (contacts.isEmpty()) {
+            binding.tvNoContacts.visibility = View.VISIBLE
+            binding.tvNoContacts.text = if (ContactsLookup.hasPermission(this))
+                "Keine Kontakte gefunden"
+            else
+                "Berechtigung für Kontakte fehlt"
+            return
+        }
+        binding.tvNoContacts.visibility = View.GONE
+        contacts.forEachIndexed { i, contact ->
+            binding.llContacts.addView(buildContactRow(contact))
+            if (i < contacts.size - 1) {
+                val divider = View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, dp(1)
+                    ).also { it.setMargins(dp(60), 0, dp(16), 0) }
+                    setBackgroundColor(0x1A000000)
+                }
+                binding.llContacts.addView(divider)
+            }
+        }
+    }
+
+    private fun buildContactRow(contact: ContactsLookup.Entry): LinearLayout {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            isClickable = true
+            isFocusable = true
+            val tv = TypedValue()
+            theme.resolveAttribute(android.R.attr.selectableItemBackground, tv, true)
+            setBackgroundResource(tv.resourceId)
+            setOnClickListener { setCallTarget(contact.displayName, contact.phoneNumber) }
+        }
+
+        // Lead column kept the same width as call-history rows so the two
+        // lists' name columns line up vertically even though contacts have
+        // no direction icon.
+        val lead = TextView(this).apply {
+            text = "·"
+            textSize = 22f
+            setTextColor(getColor(R.color.status_neutral))
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(dp(44), LinearLayout.LayoutParams.WRAP_CONTENT)
+        }
+        val textColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            )
+        }
+        textColumn.addView(TextView(this).apply {
+            text = contact.displayName
+            textSize = 20f
+            setTextColor(getColor(R.color.text_primary))
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        textColumn.addView(TextView(this).apply {
+            text = contact.phoneNumber
+            textSize = 13f
+            setTextColor(getColor(R.color.status_neutral))
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+
+        row.addView(lead)
+        row.addView(textColumn)
+        return row
     }
 
     private fun refreshCallHistory() {
@@ -248,12 +644,21 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(16), dp(14), dp(16), dp(14))
             isClickable = true
             isFocusable = true
+            isLongClickable = true
             // Ripple background
             val tv = TypedValue()
             theme.resolveAttribute(android.R.attr.selectableItemBackground, tv, true)
             setBackgroundResource(tv.resourceId)
-            // Tap to fill dial field with caller number
-            setOnClickListener { binding.etPhone.setText(record.callerNumber) }
+            // Tap = call back (fills dial field with the *name* for clarity;
+            // the actual number is held in pendingCallNumber so Anrufen still
+            // works). Long-press = caregiver-facing detail view. Long-press
+            // stays a hidden affordance so the elderly user never stumbles
+            // into it by accident.
+            setOnClickListener { setCallTarget(displayNameForRecord(record), record.callerNumber) }
+            setOnLongClickListener {
+                showCallDetailDialog(record)
+                true
+            }
         }
 
         val iconView = TextView(this).apply {
@@ -266,7 +671,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val nameView = TextView(this).apply {
-            text = record.callerName
+            text = displayNameForRecord(record)
             textSize = 20f
             setTextColor(getColor(R.color.text_primary))
             layoutParams = LinearLayout.LayoutParams(
@@ -296,6 +701,188 @@ class MainActivity : AppCompatActivity() {
         a.get(Calendar.YEAR) == b.get(Calendar.YEAR) &&
         a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
 
+    /**
+     * Marks the next call as targeting [number] while the field shows
+     * [displayName]. [suppressPhoneTextWatcher] keeps the watcher from
+     * tripping its "user is typing" branch when we set the text ourselves.
+     */
+    private fun setCallTarget(displayName: String, number: String) {
+        pendingCallNumber = number
+        suppressPhoneTextWatcher = true
+        binding.etPhone.setText(displayName)
+        suppressPhoneTextWatcher = false
+    }
+
+    private fun clearCallTarget() {
+        pendingCallNumber = null
+        suppressPhoneTextWatcher = true
+        binding.etPhone.text?.clear()
+        suppressPhoneTextWatcher = false
+    }
+
+    /**
+     * Append to the phone field as if the user had typed [s]. If a name is
+     * currently shown from a history/contact tap, replace it first — the
+     * user is starting a fresh manual number.
+     */
+    private fun appendToPhone(s: String) {
+        if (pendingCallNumber != null) clearCallTarget()
+        binding.etPhone.append(s)
+    }
+
+    /**
+     * Resolves the best label for a historical call. The saved `callerName`
+     * is preferred when it isn't a placeholder (the raw number), because a
+     * contact may have since been renamed or deleted and we don't want
+     * historical entries to lose their original identification. Only when
+     * the saved name *is* just the number do we try a fresh lookup — handy
+     * when the user adds a contact for a number they previously called.
+     */
+    private fun displayNameForRecord(record: CallRecord): String {
+        if (record.callerName.isNotBlank() && record.callerName != record.callerNumber) {
+            return record.callerName
+        }
+        return ContactsLookup.displayNameForNumber(this, record.callerNumber)
+            ?: record.callerName.ifBlank { record.callerNumber }
+    }
+
+    /**
+     * Caregiver-facing detail view. Reached only by long-pressing a history
+     * row, so it never appears for the elderly user by accident. Shows the
+     * persisted summary and full transcript for the call and offers a
+     * "Löschen" button that scrubs both the metadata and the encrypted
+     * archive file.
+     */
+    private fun showCallDetailDialog(record: CallRecord) {
+        val archive = CallArchiveStore.load(this, record.id)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), dp(8))
+        }
+
+        val headerFmt = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+        val durationLabel = if (record.durationSeconds >= 60)
+            "${record.durationSeconds / 60} Min ${record.durationSeconds % 60} Sek"
+        else
+            "${record.durationSeconds} Sek"
+        container.addView(TextView(this).apply {
+            text = "${displayNameForRecord(record)}\n" +
+                "${headerFmt.format(record.startTime)} · $durationLabel · ${record.callerNumber}"
+            textSize = 14f
+            setTextColor(getColor(R.color.text_primary))
+            setPadding(0, 0, 0, dp(10))
+        })
+
+        if (archive == null) {
+            container.addView(TextView(this).apply {
+                text = "Kein Transkript gespeichert."
+                textSize = 14f
+                setTextColor(getColor(R.color.status_neutral))
+            })
+        } else {
+            if (!archive.summaryText.isNullOrBlank()) {
+                container.addView(sectionHeader("Zusammenfassung"))
+                container.addView(TextView(this).apply {
+                    text = archive.summaryText
+                    textSize = 14f
+                    setTextColor(getColor(R.color.text_primary))
+                    setPadding(0, 0, 0, dp(10))
+                })
+            }
+            if (archive.transcriptTurns.isNotEmpty()) {
+                container.addView(sectionHeader("Transkript"))
+                container.addView(TextView(this).apply {
+                    text = archive.transcriptTurns.joinToString("\n") {
+                        if (it.speakerLabel.isBlank()) it.text
+                        else "${it.speakerLabel}: ${it.text}"
+                    }
+                    textSize = 13f
+                    setTextColor(getColor(R.color.text_primary))
+                })
+            }
+        }
+
+        val scroll = android.widget.ScrollView(this).apply { addView(container) }
+
+        AlertDialog.Builder(this)
+            .setTitle("Anrufdetails")
+            .setView(scroll)
+            .setPositiveButton("Schließen", null)
+            .setNeutralButton("Löschen") { _, _ -> confirmDeleteCall(record) }
+            .show()
+    }
+
+    private fun sectionHeader(label: String) = TextView(this).apply {
+        text = label
+        textSize = 13f
+        setTypeface(null, Typeface.BOLD)
+        setTextColor(getColor(R.color.text_primary))
+        setPadding(0, dp(4), 0, dp(2))
+    }
+
+    private fun confirmDeleteCall(record: CallRecord) {
+        AlertDialog.Builder(this)
+            .setTitle("Eintrag löschen?")
+            .setMessage("Der Anruf und das gespeicherte Transkript werden entfernt.")
+            .setPositiveButton("Löschen") { _, _ ->
+                CallHistory.remove(this, record.id)
+                refreshCallHistory()
+            }
+            .setNegativeButton("Abbrechen", null)
+            .show()
+    }
+
+    /**
+     * Surfaces logcat output as a dialog so the caregiver can diagnose
+     * registration/network failures without needing adb on a connected
+     * laptop. Since API 24 each app can only read its own log lines
+     * without the system-only READ_LOGS permission, which is exactly
+     * what we need — we see Linphone's belle-sip / ortp output and our
+     * own Log.* calls, nothing else on the device.
+     *
+     * Tapping "Kopieren" sends the buffer to the system clipboard so
+     * it can be pasted into an email/chat for the developer.
+     */
+    private fun showDiagnosticsDialog() {
+        val log = readRecentLogcat(maxLines = 500)
+        val tv = TextView(this).apply {
+            text = if (log.isBlank())
+                "Keine Log-Einträge verfügbar.\n\nManche Geräte erlauben Apps nicht, ihre eigenen Logs zu lesen. Bitte mit adb logcat von einem Computer aus prüfen."
+            else log
+            textSize = 10f
+            setPadding(dp(12), dp(8), dp(12), dp(8))
+            typeface = android.graphics.Typeface.MONOSPACE
+            setTextIsSelectable(true)
+        }
+        val scroll = android.widget.ScrollView(this).apply { addView(tv) }
+        AlertDialog.Builder(this)
+            .setTitle("Diagnose-Log (zuletzt)")
+            .setView(scroll)
+            .setPositiveButton("Schließen", null)
+            .setNeutralButton("Kopieren") { _, _ ->
+                val cm = getSystemService(android.content.ClipboardManager::class.java)
+                cm.setPrimaryClip(
+                    android.content.ClipData.newPlainText("SipTranscribe diagnostic log", tv.text)
+                )
+                toast("Log in Zwischenablage kopiert")
+            }
+            .show()
+    }
+
+    /**
+     * Reads the tail of the current process's logcat buffer. Falls back
+     * to an empty string on any failure (some OEM ROMs strip the logcat
+     * binary or block process-self-reads even within the API contract).
+     */
+    private fun readRecentLogcat(maxLines: Int): String = try {
+        val proc = Runtime.getRuntime().exec(
+            arrayOf("logcat", "-d", "-v", "time", "-t", maxLines.toString())
+        )
+        proc.inputStream.bufferedReader().use { it.readText() }
+    } catch (e: Exception) {
+        ""
+    }
+
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
     private fun loadSettings() {
@@ -303,19 +890,40 @@ class MainActivity : AppCompatActivity() {
         binding.etPassword.setText(prefs.getString(KEY_PASS, ""))
         binding.etDomain.setText(prefs.getString(KEY_DOMAIN, "tel.t-online.de"))
         binding.etDisplayName.setText(prefs.getString(KEY_DISPLAY, ""))
-        binding.etPort.setText(prefs.getInt(KEY_PORT, 5061).toString())
-        binding.actvTransport.setText(prefs.getString(KEY_TRANSPORT, "TLS"), false)
+        // Defaults match the combination the Linphone reference app uses
+        // against tel.t-online.de today: UDP/5060 with no media encryption.
+        // The earlier TLS/SRTP defaults produced "io error" on networks that
+        // don't pass TLS on 5061. The advanced UI still lets the user pick
+        // TLS/SRTP if their line supports it.
+        binding.etPort.setText(prefs.getInt(KEY_PORT, 5060).toString())
+        binding.actvTransport.setText(prefs.getString(KEY_TRANSPORT, "UDP"), false)
         binding.etExpires.setText(prefs.getInt(KEY_EXPIRES, 3600).toString())
         binding.etAuthUser.setText(prefs.getString(KEY_AUTH_USER, ""))
         binding.etRealm.setText(prefs.getString(KEY_REALM, ""))
         binding.etOutboundProxy.setText(prefs.getString(KEY_OUTBOUND_PROXY, ""))
-        binding.actvMediaEnc.setText(prefs.getString(KEY_MEDIA_ENC, "SRTP"), false)
+        binding.actvMediaEnc.setText(prefs.getString(KEY_MEDIA_ENC, "Keine"), false)
+        binding.cbUseSrv.isChecked = prefs.getBoolean(KEY_USE_SRV, true)
+        binding.cbTranscriptShowLocal.isChecked =
+            prefs.getBoolean(KEY_TRANSCRIPT_SHOW_LOCAL, false)
+        val favCount = currentFavouriteCount()
+        binding.actvFavouriteCount.setText(favCount.toString(), false)
         binding.etAzureEndpoint.setText(prefs.getString(KEY_AZURE_ENDPOINT, ""))
         binding.etAzureKey.setText(prefs.getString(KEY_AZURE_KEY, ""))
         binding.etAzureDeployment.setText(prefs.getString(KEY_AZURE_DEPLOYMENT, ""))
         binding.etOwnerNames.setText(prefs.getString(KEY_OWNER_NAMES, DEFAULT_OWNER_NAMES))
         binding.etSummaryPrompt.setText(
             prefs.getString(KEY_SUMMARY_PROMPT, ConversationAnalyzer.DEFAULT_SYSTEM_PROMPT)
+        )
+        binding.etSummaryInterval.setText(
+            prefs.getInt(KEY_SUMMARY_INTERVAL, DEFAULT_SUMMARY_INTERVAL_SECONDS).toString()
+        )
+        binding.cbMailboxEnabled.isChecked =
+            prefs.getBoolean(KEY_MAILBOX_ENABLED, false)
+        binding.etMailboxTimeout.setText(
+            prefs.getInt(KEY_MAILBOX_TIMEOUT_SECONDS, DEFAULT_MAILBOX_TIMEOUT_SECONDS).toString()
+        )
+        binding.etMailboxGreeting.setText(
+            prefs.getString(KEY_MAILBOX_GREETING_TEXT, DEFAULT_MAILBOX_GREETING_TEXT)
         )
     }
 
@@ -342,6 +950,7 @@ class MainActivity : AppCompatActivity() {
             "DTLS" -> MediaEncryption.DTLS
             else -> MediaEncryption.None
         }
+        val useSrv = binding.cbUseSrv.isChecked
 
         if (user.isEmpty() || pass.isEmpty() || domain.isEmpty()) {
             toast("Bitte alle Felder ausfuellen")
@@ -360,11 +969,27 @@ class MainActivity : AppCompatActivity() {
             putString(KEY_REALM, realm ?: "")
             putString(KEY_OUTBOUND_PROXY, outboundProxy ?: "")
             putString(KEY_MEDIA_ENC, mediaEncStr)
+            putBoolean(KEY_USE_SRV, useSrv)
+            putBoolean(KEY_TRANSCRIPT_SHOW_LOCAL, binding.cbTranscriptShowLocal.isChecked)
             putString(KEY_AZURE_ENDPOINT, binding.etAzureEndpoint.text.toString().trim())
             putString(KEY_AZURE_KEY, binding.etAzureKey.text.toString().trim())
             putString(KEY_AZURE_DEPLOYMENT, binding.etAzureDeployment.text.toString().trim())
             putString(KEY_OWNER_NAMES, binding.etOwnerNames.text.toString().trim())
             putString(KEY_SUMMARY_PROMPT, binding.etSummaryPrompt.text.toString())
+            // Allow blank or invalid input to fall back to the default rather
+            // than persisting a bad value the user can't see in the UI.
+            val intervalRaw = binding.etSummaryInterval.text?.toString()?.trim()
+            val interval = intervalRaw?.toIntOrNull()?.coerceAtLeast(MIN_SUMMARY_INTERVAL_SECONDS)
+                ?: DEFAULT_SUMMARY_INTERVAL_SECONDS
+            putInt(KEY_SUMMARY_INTERVAL, interval)
+
+            putBoolean(KEY_MAILBOX_ENABLED, binding.cbMailboxEnabled.isChecked)
+            val mbTimeoutRaw = binding.etMailboxTimeout.text?.toString()?.trim()
+            val mbTimeout = mbTimeoutRaw?.toIntOrNull()?.coerceAtLeast(5)
+                ?: DEFAULT_MAILBOX_TIMEOUT_SECONDS
+            putInt(KEY_MAILBOX_TIMEOUT_SECONDS, mbTimeout)
+            putString(KEY_MAILBOX_GREETING_TEXT, binding.etMailboxGreeting.text.toString())
+
             apply()
         }
 
@@ -374,7 +999,8 @@ class MainActivity : AppCompatActivity() {
                 user, pass, domain, display,
                 port, transport, expires,
                 authUser, realm, outboundProxy,
-                mediaEncryption
+                mediaEncryption,
+                useSrv
             )
         }, 800)
 
@@ -386,9 +1012,10 @@ class MainActivity : AppCompatActivity() {
         val recordFilePath = "${filesDir.absolutePath}/call_${System.currentTimeMillis()}.wav"
         val call = LinphoneManager.makeCall(number, recordFilePath)
         if (call != null) {
+            val displayName = ContactsLookup.displayNameForNumber(this, number) ?: number
             startActivity(Intent(this, CallActivity::class.java).apply {
                 putExtra(CallActivity.EXTRA_IS_INCOMING, false)
-                putExtra(CallActivity.EXTRA_REMOTE_ADDRESS, number)
+                putExtra(CallActivity.EXTRA_REMOTE_ADDRESS, displayName)
                 putExtra(CallActivity.EXTRA_REMOTE_NUMBER, number)
                 putExtra(CallActivity.EXTRA_RECORD_FILE, recordFilePath)
             })
@@ -400,7 +1027,8 @@ class MainActivity : AppCompatActivity() {
     private fun requestRequiredPermissions() {
         val needed = mutableListOf(
             Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.READ_PHONE_STATE
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_CONTACTS
         ).also {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
                 it.add(Manifest.permission.POST_NOTIFICATIONS)

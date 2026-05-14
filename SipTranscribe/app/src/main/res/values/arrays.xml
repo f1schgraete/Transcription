@@ -11,4 +11,9 @@
         <item>ZRTP</item>
         <item>DTLS</item>
     </string-array>
+    <string-array name="favourite_counts">
+        <item>2</item>
+        <item>4</item>
+        <item>6</item>
+    </string-array>
 </resources>

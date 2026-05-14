@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.SipTranscribe" parent="Theme.MaterialComponents.Light.DarkActionBar">
+    <!-- NoActionBar so the OS-rendered title bar doesn't render a second
+         "Text-Telefon" heading above the in-layout header. -->
+    <style name="Theme.SipTranscribe" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/accent</item>
         <item name="colorPrimaryVariant">#0D47A1</item>
         <item name="colorOnPrimary">@color/text_on_dark</item>

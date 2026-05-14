@@ -52,9 +52,37 @@ class SipService : Service() {
 
         LinphoneManager.onIncomingCall = { call ->
             val addr = call.remoteAddress
-            val callerName = addr?.displayName ?: addr?.username ?: "Unbekannt"
-            val callerNumber = addr?.username ?: ""
-            showIncomingCallNotification(callerName, callerNumber)
+            val rawNumber = addr.username.orEmpty()
+            // Contact name beats SIP display name beats raw number — the contact
+            // is what the user recognises; the SIP display name is rarely set;
+            // the raw number is the last resort.
+            val contactName = ContactsLookup.displayNameForNumber(this, rawNumber)
+            val sipName = addr.displayName?.takeIf { it.isNotBlank() }
+            val callerName = contactName ?: sipName ?: rawNumber.ifBlank { "Unbekannt" }
+
+            // Direct activity launch on top of the notification's
+            // full-screen intent. Background activity starts are normally
+            // restricted on Android 10+, but a foreground service with
+            // foregroundServiceType="phoneCall" is on the allow-list for
+            // exactly this case (incoming-call UI). On strict OEM ROMs
+            // (Lenovo, Xiaomi, …) the system can silently demote the
+            // full-screen intent to a heads-up notification, and the
+            // direct startActivity here is the belt-and-braces fallback
+            // so the call UI actually appears.
+            try {
+                startActivity(Intent(this, CallActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_NO_USER_ACTION
+                    putExtra(CallActivity.EXTRA_IS_INCOMING, true)
+                    putExtra(CallActivity.EXTRA_REMOTE_ADDRESS, callerName)
+                    putExtra(CallActivity.EXTRA_REMOTE_NUMBER, rawNumber)
+                })
+            } catch (e: Exception) {
+                android.util.Log.w("SipService",
+                    "Direct CallActivity launch failed; full-screen intent will fire", e)
+            }
+            showIncomingCallNotification(callerName, rawNumber)
         }
 
         // Use a CoreListenerStub directly so we don't overwrite the UI callback
