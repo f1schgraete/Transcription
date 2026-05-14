@@ -59,7 +59,10 @@ class MainActivity : AppCompatActivity() {
         val uri = result.data?.data
         val slot = currentFavouriteSlot
         currentFavouriteSlot = -1
-        if (result.resultCode == RESULT_OK && uri != null && slot in 0..3) {
+        // The hard-coded 0..3 guard used to silently drop slots 4 and 5 even
+        // when the user had Anzahl Favoriten set to 6 — the contact picker
+        // returned successfully but the save was a no-op.
+        if (result.resultCode == RESULT_OK && uri != null && slot in 0 until MAX_FAVOURITE_SLOTS) {
             saveFavouriteFromUri(slot, uri)
         }
     }
@@ -234,6 +237,21 @@ class MainActivity : AppCompatActivity() {
         binding.btnDiagnostics.setOnClickListener { showDiagnosticsDialog() }
         setupSttTest()
 
+        // Persist UX-only toggles immediately when flipped, instead of
+        // waiting for "Verbinden" to save them. The Verbinden flow still
+        // writes the same keys so this isn't a behavioural change for the
+        // setup path — it just means the caregiver doesn't need to remember
+        // to re-save settings after toggling a single checkbox.
+        binding.cbTranscriptShowLocal.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(KEY_TRANSCRIPT_SHOW_LOCAL, checked).apply()
+        }
+        binding.cbUseSrv.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(KEY_USE_SRV, checked).apply()
+        }
+        binding.cbMailboxEnabled.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(KEY_MAILBOX_ENABLED, checked).apply()
+        }
+
         binding.btnCall.setOnClickListener {
             // If the user picked a name from history or contacts the visible
             // text is the display name; the actual number lives in
@@ -309,72 +327,49 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Rebuilds the favourites column from scratch each time. We used to have
-     * 4 fixed Button views inside a GridLayout with rowWeight/columnWeight,
-     * but on this Lenovo tablet the GridLayout occasionally collapsed two
-     * rows into one (the "4 buttons became 2 enlarged" report). Building
-     * plain LinearLayout rows of buttons in code sidesteps that
-     * measurement edge case and lets the count be data-driven.
-     *
-     * The middle column is paired (2 buttons per row), so the row layout
-     * is the same shape for 2 / 4 / 6: 1 / 2 / 3 rows respectively. Empty
-     * column slots when count is odd would use a Space; for 2 / 4 / 6 we
-     * never have an odd row.
+     * Drives the 6 static favourite tiles in `ll_favourites` (a 2-column
+     * GridLayout). Each slot's button is either VISIBLE (with its stored
+     * name and click handlers wired up) or GONE (when the active count
+     * doesn't reach that slot). We deliberately keep the buttons in XML
+     * with fixed 80dp heights — earlier dynamic-inflation and rowWeight-
+     * driven approaches both produced render artifacts on this tablet
+     * ("4 became 2 enlarged", slot 5/6 not appearing). Toggling visibility
+     * on stable Button instances is the most boring, predictable option.
      *
      * Safe to call on layouts without the favourites container (phone
-     * landscape / portrait fallback) — `binding.llFavourites` is null
-     * there and we early-out.
+     * landscape / portrait fallback) — every binding field is null there
+     * and we early-out.
      */
     private fun refreshFavourites() {
-        val container = binding.llFavourites ?: return
-        container.removeAllViews()
+        if (binding.llFavourites == null) return
 
+        val buttons: Array<android.widget.Button?> = arrayOf(
+            binding.btnFav0, binding.btnFav1, binding.btnFav2,
+            binding.btnFav3, binding.btnFav4, binding.btnFav5
+        )
         val count = currentFavouriteCount()
-        val rows = (count + 1) / 2
-        for (rowIdx in 0 until rows) {
-            val row = android.widget.LinearLayout(this).apply {
-                orientation = android.widget.LinearLayout.HORIZONTAL
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-                )
+        for (slot in 0 until MAX_FAVOURITE_SLOTS) {
+            val btn = buttons[slot] ?: continue
+            if (slot >= count) {
+                btn.visibility = View.GONE
+                continue
             }
-            for (col in 0 until 2) {
-                val slot = rowIdx * 2 + col
-                if (slot >= count) {
-                    row.addView(android.widget.Space(this).apply {
-                        layoutParams = android.widget.LinearLayout.LayoutParams(0, 0, 1f)
-                    })
-                    continue
-                }
-                row.addView(buildFavouriteButton(slot))
+            btn.visibility = View.VISIBLE
+
+            val name = prefs.getString(keyFavouriteName(slot), null)?.takeIf { it.isNotBlank() }
+            val number = prefs.getString(keyFavouriteNumber(slot), null)?.takeIf { it.isNotBlank() }
+            if (name != null && number != null) {
+                btn.text = name
+                btn.setOnClickListener { setCallTarget(name, number) }
+            } else {
+                btn.text = "+ Hinzufügen"
+                btn.setOnClickListener { launchFavouritePicker(slot) }
             }
-            container.addView(row)
+            btn.setOnLongClickListener {
+                launchFavouritePicker(slot)
+                true
+            }
         }
-    }
-
-    private fun buildFavouriteButton(slot: Int): View {
-        val btn = layoutInflater.inflate(
-            R.layout.favourite_button, binding.llFavourites, false
-        ) as android.widget.Button
-        // The template's height is 80dp; weight=1 lets the two columns
-        // share the row width evenly.
-        (btn.layoutParams as android.widget.LinearLayout.LayoutParams).weight = 1f
-
-        val name = prefs.getString(keyFavouriteName(slot), null)?.takeIf { it.isNotBlank() }
-        val number = prefs.getString(keyFavouriteNumber(slot), null)?.takeIf { it.isNotBlank() }
-        if (name != null && number != null) {
-            btn.text = name
-            btn.setOnClickListener { setCallTarget(name, number) }
-        } else {
-            btn.text = "+ Hinzufügen"
-            btn.setOnClickListener { launchFavouritePicker(slot) }
-        }
-        btn.setOnLongClickListener {
-            launchFavouritePicker(slot)
-            true
-        }
-        return btn
     }
 
     private fun launchFavouritePicker(slot: Int) {

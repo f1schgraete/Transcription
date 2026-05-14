@@ -611,21 +611,103 @@
                         android:paddingBottom="6dp" />
 
                     <!--
-                        Favourite tiles are inflated programmatically into
-                        this container. Count is driven by KEY_FAVOURITE_COUNT
-                        (2 / 4 / 6); see MainActivity.refreshFavourites().
-                        The previous static GridLayout occasionally rendered
-                        as "2 enlarged buttons" after a refresh — going
-                        programmatic with simple horizontal rows avoids
-                        whatever measurement edge case GridLayout was
-                        hitting and lets the count change without touching
-                        XML.
+                        Six pre-declared favourite tiles in a 2-column grid.
+                        Visibility is toggled by [MainActivity.refreshFavourites]
+                        based on KEY_FAVOURITE_COUNT (2 / 4 / 6); slots beyond
+                        the active count are GONE so the grid collapses to
+                        the right number of rows.
+
+                        We went static (rather than inflating in code) after
+                        a couple of bug rounds: the original dynamic
+                        LinearLayout-of-rows approach mis-measured on this
+                        Lenovo tablet and silently dropped slots 4 and 5 in
+                        the picker callback. Keeping the buttons in XML —
+                        with fixed 80dp heights (no rowWeight) — gives
+                        deterministic placement and stable Button instances
+                        the activity can wire up by id.
                     -->
-                    <LinearLayout
+                    <GridLayout
                         android:id="@+id/ll_favourites"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical" />
+                        android:columnCount="2"
+                        android:useDefaultMargins="false">
+
+                        <Button android:id="@+id/btn_fav_0"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:text="+ Hinzufügen" />
+
+                        <Button android:id="@+id/btn_fav_1"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:text="+ Hinzufügen" />
+
+                        <Button android:id="@+id/btn_fav_2"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:text="+ Hinzufügen" />
+
+                        <Button android:id="@+id/btn_fav_3"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:text="+ Hinzufügen" />
+
+                        <Button android:id="@+id/btn_fav_4"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:visibility="gone"
+                            android:text="+ Hinzufügen" />
+
+                        <Button android:id="@+id/btn_fav_5"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:visibility="gone"
+                            android:text="+ Hinzufügen" />
+
+                    </GridLayout>
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>

@@ -147,6 +147,22 @@ class CallActivity : AppCompatActivity() {
         setupButtons()
         setupCallListener()
         setupTranscriber()
+
+        // Race guard: an incoming call can be cancelled (caller hung up, or
+        // another registered device answered) between when SipService kicks
+        // CallActivity off and when our onCallStateChanged listener is wired
+        // up. In that case the End / Released event never reaches us and the
+        // activity sits forever on the Incoming UI. Catch the case explicitly
+        // by inspecting the core's current state once setup is complete.
+        when (LinphoneManager.getCurrentCall()?.state) {
+            null,
+            Call.State.End,
+            Call.State.Released,
+            Call.State.Error -> {
+                handler.post { endCall() }
+            }
+            else -> { /* normal — listener will handle further transitions */ }
+        }
     }
 
     private fun setupButtons() {
