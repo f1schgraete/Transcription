@@ -57,6 +57,23 @@
             android:paddingStart="14dp"
             android:paddingEnd="14dp" />
 
+        <!--
+            Battery indicator. Always visible in the header so the user
+            can glance at it while the app is pinned in kiosk mode and
+            the system status bar is hidden. Goes red + adds a "↘
+            Aufladen" tail when below 20 % and not charging — see
+            MainActivity.updateBattery().
+        -->
+        <TextView
+            android:id="@+id/tv_battery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@color/text_primary"
+            android:paddingStart="6dp"
+            android:paddingEnd="14dp"
+            android:fontFamily="monospace" />
+
         <Button
             android:id="@+id/btn_settings"
             android:layout_width="wrap_content"
@@ -173,13 +190,264 @@
                                 android:textSize="18sp" />
                         </com.google.android.material.textfield.TextInputLayout>
 
+                        <!--
+                            Collapsible sub-sections. Each section toggle is a
+                            wide TextButton acting as a header, followed by a
+                            content LinearLayout that's GONE by default. The
+                            order prioritises what the caregiver actually
+                            tweaks day-to-day: display & operation first,
+                            seldom-changed SIP advanced near the bottom.
+                            MainActivity wires the arrow flips and toggles in
+                            wireSettingsSections().
+                        -->
+
+                        <!-- ── Section: Anzeige & Bedienung ── -->
+                        <Button
+                            android:id="@+id/btn_section_display"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:gravity="start|center_vertical"
+                            android:text="Anzeige &amp; Bedienung ▸"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+                        <LinearLayout
+                            android:id="@+id/layout_section_display"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Anzahl Favoriten (Schnellwahl)"
+                                android:layout_marginTop="6dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                                <AutoCompleteTextView
+                                    android:id="@+id/actv_favourite_count"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="none"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <CheckBox
+                                android:id="@+id/cb_transcript_show_local"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="Eigene Stimme im Live-Transkript anzeigen"
+                                android:textSize="15sp" />
+
+                        </LinearLayout>
+
+                        <!-- ── Section: KI / Zusammenfassung ── -->
+                        <Button
+                            android:id="@+id/btn_section_summary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:gravity="start|center_vertical"
+                            android:text="KI / Zusammenfassung ▸"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+                        <LinearLayout
+                            android:id="@+id/layout_section_summary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Zusammenfassung-Intervall (Sekunden)"
+                                android:layout_marginTop="6dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_summary_interval"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="number"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Endpunkt-URL"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_azure_endpoint"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="textUri"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="API-Schl&#xFC;ssel"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                                app:passwordToggleEnabled="true">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_azure_key"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="textPassword"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Chat-Deployment (z. B. gpt-4o-mini)"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_azure_deployment"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="text"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Namen des Anschluss-Inhabers (komma-getrennt)"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_owner_names"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="text"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Prompt für Zusammenfassung"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_summary_prompt"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="textMultiLine"
+                                    android:gravity="top|start"
+                                    android:minLines="6"
+                                    android:maxLines="20"
+                                    android:textSize="14sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <Button
+                                android:id="@+id/btn_reset_prompt"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="end"
+                                android:text="Standard-Prompt"
+                                android:textSize="13sp"
+                                style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+                            <Button
+                                android:id="@+id/btn_contact_suggestions"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="Vorgeschlagene Kontakte"
+                                android:textSize="15sp"
+                                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+                        </LinearLayout>
+
+                        <!-- ── Section: Anrufbeantworter ── -->
+                        <Button
+                            android:id="@+id/btn_section_mailbox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:gravity="start|center_vertical"
+                            android:text="Anrufbeantworter (in Vorbereitung) ▸"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+                        <LinearLayout
+                            android:id="@+id/layout_section_mailbox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Diese Funktion ist noch nicht aktiv. Werte werden gespeichert, damit sie später nicht erneut eingegeben werden müssen."
+                                android:textSize="13sp"
+                                android:textColor="@color/status_neutral"
+                                android:paddingBottom="6dp" />
+
+                            <CheckBox
+                                android:id="@+id/cb_mailbox_enabled"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Anrufbeantworter aktiv"
+                                android:textSize="15sp" />
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Annehmen nach (Sekunden)"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_mailbox_timeout"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="number"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Begrüßungstext"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_mailbox_greeting"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="textMultiLine"
+                                    android:gravity="top|start"
+                                    android:minLines="3"
+                                    android:maxLines="8"
+                                    android:textSize="14sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                        </LinearLayout>
+
+                        <!-- ── Section: Erweiterte SIP-Einstellungen (existing btn_advanced) ── -->
                         <Button
                             android:id="@+id/btn_advanced"
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="Erweiterte Einstellungen &#x25B8;"
-                            android:textSize="14sp"
+                            android:layout_marginTop="8dp"
+                            android:gravity="start|center_vertical"
+                            android:text="Erweiterte SIP-Einstellungen ▸"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
                             style="@style/Widget.MaterialComponents.Button.TextButton" />
 
                         <LinearLayout
@@ -193,7 +461,7 @@
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Port"
-                                android:layout_marginTop="10dp"
+                                android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
                                     android:id="@+id/et_port"
@@ -296,206 +564,32 @@
                                 android:textSize="15sp"
                                 android:checked="true" />
 
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="KI (Azure)"
-                                android:textSize="14sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/text_primary"
-                                android:layout_marginTop="20dp"
-                                android:paddingBottom="2dp" />
+                        </LinearLayout>
 
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Endpunkt-URL"
-                                android:layout_marginTop="10dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_azure_endpoint"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="textUri"
-                                    android:textSize="16sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
+                        <!-- ── Section: Diagnose ── -->
+                        <Button
+                            android:id="@+id/btn_section_diag"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:gravity="start|center_vertical"
+                            android:text="Diagnose ▸"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            style="@style/Widget.MaterialComponents.Button.TextButton" />
 
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="API-Schl&#xFC;ssel"
-                                android:layout_marginTop="10dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                                app:passwordToggleEnabled="true">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_azure_key"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="textPassword"
-                                    android:textSize="16sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Chat-Deployment (z. B. gpt-4o-mini)"
-                                android:layout_marginTop="10dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_azure_deployment"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="text"
-                                    android:textSize="16sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Namen des Anschluss-Inhabers (komma-getrennt)"
-                                android:layout_marginTop="10dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_owner_names"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="text"
-                                    android:textSize="16sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Prompt für Zusammenfassung"
-                                android:layout_marginTop="10dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_summary_prompt"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="textMultiLine"
-                                    android:gravity="top|start"
-                                    android:minLines="6"
-                                    android:maxLines="20"
-                                    android:textSize="14sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <Button
-                                android:id="@+id/btn_reset_prompt"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_gravity="end"
-                                android:text="Standard-Prompt"
-                                android:textSize="13sp"
-                                style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Zusammenfassung-Intervall (Sekunden)"
-                                android:layout_marginTop="10dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_summary_interval"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="number"
-                                    android:textSize="16sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <CheckBox
-                                android:id="@+id/cb_transcript_show_local"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="10dp"
-                                android:text="Eigene Stimme im Live-Transkript anzeigen"
-                                android:textSize="15sp" />
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Anzahl Favoriten (Schnellwahl)"
-                                android:layout_marginTop="10dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-                                <AutoCompleteTextView
-                                    android:id="@+id/actv_favourite_count"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="none"
-                                    android:textSize="16sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <Button
-                                android:id="@+id/btn_contact_suggestions"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="10dp"
-                                android:text="Vorgeschlagene Kontakte"
-                                android:textSize="15sp"
-                                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
-
-                            <!-- Answering-machine settings; UI only, not yet active. -->
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Anrufbeantworter (in Vorbereitung)"
-                                android:textSize="15sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/text_primary"
-                                android:layout_marginTop="20dp"
-                                android:paddingBottom="2dp" />
-
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="Diese Funktion ist noch nicht aktiv. Werte werden gespeichert, damit sie später nicht erneut eingegeben werden müssen."
-                                android:textSize="13sp"
-                                android:textColor="@color/status_neutral"
-                                android:paddingBottom="6dp" />
-
-                            <CheckBox
-                                android:id="@+id/cb_mailbox_enabled"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Anrufbeantworter aktiv"
-                                android:textSize="15sp" />
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Annehmen nach (Sekunden)"
-                                android:layout_marginTop="10dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_mailbox_timeout"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="number"
-                                    android:textSize="16sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Begrüßungstext"
-                                android:layout_marginTop="10dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_mailbox_greeting"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="textMultiLine"
-                                    android:gravity="top|start"
-                                    android:minLines="3"
-                                    android:maxLines="8"
-                                    android:textSize="14sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
+                        <LinearLayout
+                            android:id="@+id/layout_section_diag"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
 
                             <Button
                                 android:id="@+id/btn_diagnostics"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_marginTop="14dp"
+                                android:layout_marginTop="6dp"
                                 android:text="Diagnose-Log anzeigen"
                                 android:textSize="14sp"
                                 style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
@@ -887,6 +981,26 @@
         </androidx.cardview.widget.CardView>
 
     </LinearLayout>
+
+    <!--
+        Low-battery prompt. Sits just above the Anrufen button, right-
+        aligned because the Lenovo tablet's USB-C port is on the
+        bottom-right edge — the arrow points at it. Hidden unless the
+        battery drops below 20 % and the charger isn't plugged in, so
+        we don't pester the user when everything is fine.
+    -->
+    <TextView
+        android:id="@+id/tv_charge_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="4dp"
+        android:text="Akku schwach — bitte aufladen ↘"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@color/status_error"
+        android:visibility="gone" />
 
     <!-- Global Anrufen — same physical position regardless of which
          column was used to choose a target. -->

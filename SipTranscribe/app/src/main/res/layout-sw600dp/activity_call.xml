@@ -53,6 +53,18 @@
             android:paddingStart="12dp"
             android:paddingEnd="12dp" />
 
+        <!-- Battery in the in-call header so the user can see it while
+             talking; kiosk-pinned apps hide the system status bar. -->
+        <TextView
+            android:id="@+id/tv_battery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@color/text_on_dark_secondary"
+            android:paddingStart="4dp"
+            android:paddingEnd="12dp"
+            android:fontFamily="monospace" />
+
         <TextView
             android:id="@+id/tv_duration"
             android:layout_width="wrap_content"

@@ -181,13 +181,16 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // Advanced settings toggle
-        binding.btnAdvanced.setOnClickListener {
-            val visible = binding.layoutAdvanced.visibility == View.VISIBLE
-            binding.layoutAdvanced.visibility = if (visible) View.GONE else View.VISIBLE
-            binding.btnAdvanced.text =
-                if (visible) "Erweiterte Einstellungen \u25B8" else "Erweiterte Einstellungen \u25BE"
-        }
+        // Collapsible settings sub-sections. wireSection swaps the trailing
+        // arrow (\u25B8 / \u25BE) and toggles the content layout. Each binding pair
+        // is nullable on the phone-landscape / portrait layouts (only the
+        // tablet sw600dp variant has the new section headers) \u2014 wireSection
+        // no-ops there so the activity still compiles for both.
+        wireSection(binding.btnSectionDisplay, binding.layoutSectionDisplay)
+        wireSection(binding.btnSectionSummary, binding.layoutSectionSummary)
+        wireSection(binding.btnSectionMailbox, binding.layoutSectionMailbox)
+        wireSection(binding.btnAdvanced, binding.layoutAdvanced)
+        wireSection(binding.btnSectionDiag, binding.layoutSectionDiag)
 
         // Transport dropdown
         val transportAdapter = ArrayAdapter(
@@ -195,6 +198,8 @@ class MainActivity : AppCompatActivity() {
             resources.getStringArray(R.array.transport_types)
         )
         binding.actvTransport.setAdapter(transportAdapter)
+        binding.actvTransport.threshold = 0
+        binding.actvTransport.setOnClickListener { binding.actvTransport.showDropDown() }
         binding.actvTransport.setOnItemClickListener { _, _, _, _ ->
             val t = binding.actvTransport.text.toString()
             val currentPort = binding.etPort.text.toString().trim()
@@ -209,15 +214,31 @@ class MainActivity : AppCompatActivity() {
             resources.getStringArray(R.array.media_encryptions)
         )
         binding.actvMediaEnc.setAdapter(mediaEncAdapter)
+        binding.actvMediaEnc.threshold = 0
+        binding.actvMediaEnc.setOnClickListener { binding.actvMediaEnc.showDropDown() }
 
         // Favourite-count dropdown. Selection is applied live so the
         // caregiver sees the new tile count in the middle column without
         // tapping Verbinden first.
+        //
+        // Note: read-only AutoCompleteTextViews (inputType="none") used with
+        // the Material ExposedDropdownMenu style are flaky if you rely on
+        // the default click→showDropDown behaviour — sometimes the popup
+        // shows only the currently-selected row, sometimes nothing at all,
+        // until the user clicks elsewhere and back. Forcing showDropDown()
+        // from an explicit OnClickListener and pinning the filter threshold
+        // to 0 gives the reliable "tap → full list" behaviour the caregiver
+        // expects. Same fix applied to the transport + media-encryption
+        // dropdowns below.
         val favCountAdapter = ArrayAdapter(
             this, android.R.layout.simple_dropdown_item_1line,
             resources.getStringArray(R.array.favourite_counts)
         )
         binding.actvFavouriteCount.setAdapter(favCountAdapter)
+        binding.actvFavouriteCount.threshold = 0
+        binding.actvFavouriteCount.setOnClickListener {
+            binding.actvFavouriteCount.showDropDown()
+        }
         binding.actvFavouriteCount.setOnItemClickListener { _, _, _, _ ->
             val n = binding.actvFavouriteCount.text.toString().toIntOrNull()
                 ?: DEFAULT_FAVOURITE_COUNT
@@ -317,6 +338,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun keyFavouriteName(slot: Int) = "favourite_${slot}_name"
     private fun keyFavouriteNumber(slot: Int) = "favourite_${slot}_number"
+
+    /**
+     * Generic show/hide wiring for the collapsible Einstellungen sub-sections.
+     * The button's label is expected to end with " ▸" (collapsed) or " ▾"
+     * (expanded); we swap whichever arrow is currently there each tap, so
+     * the XML default can carry the initial direction.
+     *
+     * Both arguments are nullable to keep callers tidy: layout variants
+     * that don't include a given section pass null and the helper no-ops.
+     */
+    private fun wireSection(button: android.widget.Button?, content: View?) {
+        if (button == null || content == null) return
+        button.setOnClickListener {
+            val expand = content.visibility != View.VISIBLE
+            content.visibility = if (expand) View.VISIBLE else View.GONE
+            val base = button.text.toString()
+                .trimEnd()
+                .trimEnd('▸', '▾')
+                .trimEnd()
+            button.text = "$base ${if (expand) "▾" else "▸"}"
+        }
+    }
 
     /** Validates the stored favourite count against [FAVOURITE_COUNT_OPTIONS],
      *  falling back to the default if the prefs file has a stale or invalid
@@ -483,6 +526,28 @@ class MainActivity : AppCompatActivity() {
             refreshCallHistory()
             refreshContacts()
         }
+        startBatteryWatcher()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stopBatteryWatcher()
+    }
+
+    private var batteryWatcher: BatteryWatcher? = null
+
+    private fun startBatteryWatcher() {
+        if (batteryWatcher != null) return
+        batteryWatcher = BatteryWatcher(
+            this,
+            binding.tvBattery,
+            binding.tvChargeHint
+        ).also { it.start() }
+    }
+
+    private fun stopBatteryWatcher() {
+        batteryWatcher?.stop()
+        batteryWatcher = null
     }
 
     private fun updateRegistrationUI(registered: Boolean) {

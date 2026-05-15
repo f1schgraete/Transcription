@@ -48,7 +48,16 @@
             android:textSize="13sp"
             android:textColor="@color/text_on_dark_secondary"
             android:paddingStart="10dp"
-            android:paddingEnd="10dp" />
+            android:paddingEnd="6dp" />
+
+        <TextView
+            android:id="@+id/tv_battery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@color/text_on_dark_secondary"
+            android:paddingEnd="8dp"
+            android:fontFamily="monospace" />
 
         <TextView
             android:id="@+id/tv_duration"

@@ -698,4 +698,19 @@ class CallActivity : AppCompatActivity() {
         LinphoneManager.onCallStateChanged = null
         cancelIncomingNotification()
     }
+
+    private var batteryWatcher: BatteryWatcher? = null
+
+    override fun onResume() {
+        super.onResume()
+        if (batteryWatcher == null) {
+            batteryWatcher = BatteryWatcher(this, binding.tvBattery).also { it.start() }
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        batteryWatcher?.stop()
+        batteryWatcher = null
+    }
 }

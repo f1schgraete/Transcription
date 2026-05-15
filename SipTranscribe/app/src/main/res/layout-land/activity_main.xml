@@ -40,7 +40,16 @@
             android:text="Nicht registriert"
             android:textSize="14sp"
             android:textColor="@color/status_neutral"
-            android:paddingEnd="12dp" />
+            android:paddingEnd="6dp" />
+
+        <TextView
+            android:id="@+id/tv_battery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@color/text_primary"
+            android:paddingEnd="10dp"
+            android:fontFamily="monospace" />
 
         <Button
             android:id="@+id/btn_settings"
