@@ -343,20 +343,6 @@
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:hint="Namen des Anschluss-Inhabers (komma-getrennt)"
-                                android:layout_marginTop="6dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_owner_names"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="text"
-                                    android:textSize="13sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
                                 android:hint="Prompt f&#xFC;r Zusammenfassung"
                                 android:layout_marginTop="6dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">

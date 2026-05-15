@@ -83,7 +83,6 @@ class MainActivity : AppCompatActivity() {
         const val KEY_AZURE_ENDPOINT = "azure_endpoint"
         const val KEY_AZURE_KEY = "azure_key"
         const val KEY_AZURE_DEPLOYMENT = "azure_deployment"
-        const val KEY_OWNER_NAMES = "owner_names"
         const val KEY_SUMMARY_PROMPT = "summary_prompt"
         const val KEY_USE_SRV = "use_dns_srv"
         const val KEY_SUMMARY_INTERVAL = "summary_interval_seconds"
@@ -102,8 +101,6 @@ class MainActivity : AppCompatActivity() {
         const val DEFAULT_FAVOURITE_COUNT = 4
         val FAVOURITE_COUNT_OPTIONS = intArrayOf(2, 4, 6)
         const val MAX_FAVOURITE_SLOTS = 6
-        const val DEFAULT_OWNER_NAMES =
-            "Waltraud, Walde, Babu, Dr. Hirsch, Waltraud Hirsch"
         /** Seconds between in-call summary refreshes. Bottoming out at 5 s
          *  keeps us from hammering Azure on a misconfigured value. */
         const val DEFAULT_SUMMARY_INTERVAL_SECONDS = 25
@@ -970,7 +967,6 @@ class MainActivity : AppCompatActivity() {
         binding.etAzureEndpoint.setText(prefs.getString(KEY_AZURE_ENDPOINT, ""))
         binding.etAzureKey.setText(prefs.getString(KEY_AZURE_KEY, ""))
         binding.etAzureDeployment.setText(prefs.getString(KEY_AZURE_DEPLOYMENT, ""))
-        binding.etOwnerNames.setText(prefs.getString(KEY_OWNER_NAMES, DEFAULT_OWNER_NAMES))
         binding.etSummaryPrompt.setText(
             prefs.getString(KEY_SUMMARY_PROMPT, ConversationAnalyzer.DEFAULT_SYSTEM_PROMPT)
         )
@@ -1034,7 +1030,6 @@ class MainActivity : AppCompatActivity() {
             putString(KEY_AZURE_ENDPOINT, binding.etAzureEndpoint.text.toString().trim())
             putString(KEY_AZURE_KEY, binding.etAzureKey.text.toString().trim())
             putString(KEY_AZURE_DEPLOYMENT, binding.etAzureDeployment.text.toString().trim())
-            putString(KEY_OWNER_NAMES, binding.etOwnerNames.text.toString().trim())
             putString(KEY_SUMMARY_PROMPT, binding.etSummaryPrompt.text.toString())
             // Allow blank or invalid input to fall back to the default rather
             // than persisting a bad value the user can't see in the UI.

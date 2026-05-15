@@ -154,14 +154,18 @@ class CallActivity : AppCompatActivity() {
         // up. In that case the End / Released event never reaches us and the
         // activity sits forever on the Incoming UI. Catch the case explicitly
         // by inspecting the core's current state once setup is complete.
-        when (LinphoneManager.getCurrentCall()?.state) {
-            null,
-            Call.State.End,
-            Call.State.Released,
-            Call.State.Error -> {
-                handler.post { endCall() }
-            }
-            else -> { /* normal — listener will handle further transitions */ }
+        //
+        // We only act on explicitly terminal states. A null currentCall does
+        // NOT mean "call already ended" — Linphone returns null transiently
+        // while it's wiring up a freshly-arrived incoming call, and an
+        // earlier version of this guard treated null as terminal. That
+        // produced a "missed call" history row plus a second CallActivity
+        // launch via the notification's full-screen intent — the user
+        // ended up with one red entry from the bogus early-end and one
+        // green entry from the real call they actually answered.
+        val cs = LinphoneManager.getCurrentCall()?.state
+        if (cs == Call.State.End || cs == Call.State.Released || cs == Call.State.Error) {
+            endCall()
         }
     }
 
@@ -198,10 +202,14 @@ class CallActivity : AppCompatActivity() {
         }
 
         binding.btnDecline.setOnClickListener {
-            saveCallRecord(answeredCall = false)
+            // Tell Linphone to send the 603, then route through endCall() so
+            // there's exactly one history row written. The old code called
+            // saveCallRecord here AND finish(), and the subsequent state
+            // transition (End / Released) ran endCall() too — which wrote
+            // a second identical missed-call row.
             LinphoneManager.getCurrentCall()?.let { LinphoneManager.declineCall(it) }
             cancelIncomingNotification()
-            finish()
+            endCall()
         }
     }
 
@@ -453,18 +461,13 @@ class CallActivity : AppCompatActivity() {
         val prompt = prefs.getString(MainActivity.KEY_SUMMARY_PROMPT, null)
             ?.takeIf { it.isNotBlank() }
             ?: ConversationAnalyzer.DEFAULT_SYSTEM_PROMPT
-        val owners = prefs.getString(MainActivity.KEY_OWNER_NAMES, MainActivity.DEFAULT_OWNER_NAMES)
-            .orEmpty()
-            .split(',')
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
 
         analyzeInFlight = true
         lastAnalyzedTurnCount = turns.size
 
         Thread({
             try {
-                val result = ConversationAnalyzer(endpoint, key, deployment, prompt, owners)
+                val result = ConversationAnalyzer(endpoint, key, deployment, prompt)
                     .analyze(text)
                 handler.post {
                     analyzeInFlight = false
@@ -566,21 +569,14 @@ class CallActivity : AppCompatActivity() {
     /**
      * If the final analysis identified a plausible caller name and we don't
      * already know this number, queue a contact suggestion for the
-     * caregiver. Skips the owner's own names (LLM occasionally confuses
-     * sides) and very short calls (likely spam/hangup noise).
+     * caregiver. With the new split-recording prompt the LLM gets explicit
+     * `[Ich]` / `[Anrufer]` labels in the transcript, so we no longer need
+     * an owner-name allow-list to filter false positives where the model
+     * misattributed our user's name to the caller.
      */
     private fun considerContactSuggestion(r: ConversationAnalyzer.Result) {
         val name = r.callerName?.trim().orEmpty()
         if (name.isBlank() || callerNumber.isBlank()) return
-
-        val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
-        val owners = prefs.getString(MainActivity.KEY_OWNER_NAMES, MainActivity.DEFAULT_OWNER_NAMES)
-            .orEmpty()
-            .split(',')
-            .map { it.trim().lowercase() }
-            .filter { it.isNotEmpty() }
-        if (name.lowercase() in owners) return
-
         val durationSec = if (callStartTime > 0L) {
             ((System.currentTimeMillis() - callStartTime) / 1000).toInt()
         } else callSeconds

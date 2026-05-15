@@ -22,8 +22,7 @@ class ConversationAnalyzer(
     private val endpoint: String,
     private val apiKey: String,
     private val deployment: String,
-    private val systemPrompt: String,
-    private val ownerNames: List<String>
+    private val systemPrompt: String
 ) {
 
     companion object {
@@ -32,28 +31,26 @@ class ConversationAnalyzer(
         private const val TIMEOUT_MS = 30_000
 
         /**
-         * Placeholder substituted with the comma-separated owner-name list before the
-         * prompt is sent. Users editing the prompt in settings can keep, remove, or
-         * reposition this token.
-         */
-        const val OWNER_NAMES_PLACEHOLDER = "{OWNER_NAMES}"
-
-        /**
-         * Default system prompt. Asks the model to:
-         *  - identify which side of the call is the phone owner using a known-names list,
-         *  - return the *other* side as caller,
-         *  - render Termine as full actionable phrases (date + what + with whom),
-         *  - keep all output as compact stichpunkte.
+         * Default system prompt. The transcript is pre-labelled with
+         * `[Ich]` (the phone owner, our user) and `[Anrufer]` (the remote
+         * party) on every line because we run split per-channel STT, so
+         * the model no longer needs an explicit owner-name list to figure
+         * out which side is which. The caller's name is taken from how
+         * `[Anrufer]` introduces themself or how `[Ich]` addresses them.
+         *
+         * The "Sprecher ?" prefix only appears when an STT result arrived
+         * before the channel label was primed; treat any such fragments
+         * as background context only.
          */
         const val DEFAULT_SYSTEM_PROMPT =
             "Du bist ein sorgfältiger Assistent und analysierst das Transkript eines deutschen Telefongesprächs.\n" +
-            "Es gibt zwei Sprecher: den Inhaber des Telefonanschlusses und den Anrufer. " +
-            "Das Transkript ist nicht nach Sprechern getrennt.\n" +
             "\n" +
-            "Inhaber-Namen (eine dieser Personen ist NICHT der Anrufer): $OWNER_NAMES_PLACEHOLDER\n" +
+            "Das Transkript ist nach Sprechern getrennt: `[Ich]` = die eigene Stimme, `[Anrufer]` = die Stimme des Anrufers. " +
+            "Selten erscheint `[Sprecher ?]` – diese Zeilen sind unbestimmt und nur als Kontext zu verwenden.\n" +
             "\n" +
-            "Denke kurz darüber nach, wer was sagt, bevor Du das JSON erstellst:\n" +
-            "1) Der Anrufer ist die Person, die NICHT in der Inhaber-Liste steht.\n" +
+            "Denke kurz darüber nach, bevor Du das JSON erstellst:\n" +
+            "1) Den Namen des Anrufers entnimmst Du Selbstvorstellungen in `[Anrufer]`-Zeilen (\"Hier ist X\", \"X am Apparat\") " +
+            "oder einer Anrede in `[Ich]`-Zeilen (\"Hallo X\"). Wenn nichts davon vorkommt, lasse `caller_name` null.\n" +
             "2) Termine sind nur dann Termine, wenn etwas Konkretes verabredet wird – nicht nur ein Datum allein. " +
             "Formuliere jeden Termin als kurzen vollständigen Satz: WANN – WAS – MIT WEM (z. B. \"Di 15:00 – Friseurtermin Frau Schmidt\").\n" +
             "3) \"Wichtige Punkte\" sind 2–5 inhaltliche Stichpunkte, was besprochen oder vereinbart wurde – keine Begrüßungen, keine Floskeln.\n" +
@@ -105,16 +102,9 @@ class ConversationAnalyzer(
     }
 
     private fun buildRequestBody(transcript: String): String {
-        val ownersRendered = ownerNames
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .joinToString(", ")
-            .ifEmpty { "(keine Namen konfiguriert)" }
-        val resolvedPrompt = systemPrompt.replace(OWNER_NAMES_PLACEHOLDER, ownersRendered)
-
         val payload = JSONObject().apply {
             put("messages", JSONArray()
-                .put(JSONObject().put("role", "system").put("content", resolvedPrompt))
+                .put(JSONObject().put("role", "system").put("content", systemPrompt))
                 .put(JSONObject().put("role", "user").put("content", transcript))
             )
             put("temperature", 0.2)
