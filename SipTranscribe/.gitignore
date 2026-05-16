@@ -1,0 +1,11 @@
+build/
+**/build/
+*.apk
+**/intermediates/
+artifacts
+obj/
+libs/
+lib/
+**/out/
+*.hprof
+

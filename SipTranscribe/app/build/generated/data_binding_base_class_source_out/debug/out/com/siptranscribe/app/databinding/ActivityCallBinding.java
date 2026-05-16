@@ -11,6 +11,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
+import androidx.constraintlayout.widget.Barrier;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.viewbinding.ViewBinding;
 import androidx.viewbinding.ViewBindings;
@@ -24,6 +25,9 @@ public final class ActivityCallBinding implements ViewBinding {
   private final ConstraintLayout rootView;
 
   @NonNull
+  public final Barrier barrierButtons;
+
+  @NonNull
   public final Button btnAccept;
 
   @NonNull
@@ -33,13 +37,70 @@ public final class ActivityCallBinding implements ViewBinding {
   public final Button btnHangUp;
 
   @NonNull
-  public final Button btnToggleMic;
+  public final Button btnHangUpRinging;
+
+  @NonNull
+  public final Button btnLoeschen;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnSpeaker;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-land/</li>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   * </ul>
+   */
+  @Nullable
+  public final CardView cardSummary;
 
   @NonNull
   public final CardView cardTranscript;
 
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-land/</li>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   * </ul>
+   */
+  @Nullable
+  public final LinearLayout headerRow;
+
   @NonNull
   public final LinearLayout layoutActive;
+
+  @NonNull
+  public final LinearLayout layoutCalling;
 
   @NonNull
   public final LinearLayout layoutIncoming;
@@ -47,8 +108,59 @@ public final class ActivityCallBinding implements ViewBinding {
   @NonNull
   public final ScrollView scrollHistory;
 
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-land/</li>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   * </ul>
+   */
+  @Nullable
+  public final LinearLayout transcriptRow;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-land/</li>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   * </ul>
+   */
+  @Nullable
+  public final TextView tvBattery;
+
   @NonNull
   public final TextView tvCaller;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-land/</li>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   * </ul>
+   */
+  @Nullable
+  public final TextView tvCallerBig;
 
   @NonNull
   public final TextView tvDuration;
@@ -57,31 +169,58 @@ public final class ActivityCallBinding implements ViewBinding {
   public final TextView tvHistory;
 
   @NonNull
-  public final TextView tvLive;
-
-  @NonNull
   public final TextView tvStatus;
 
-  private ActivityCallBinding(@NonNull ConstraintLayout rootView, @NonNull Button btnAccept,
-      @NonNull Button btnDecline, @NonNull Button btnHangUp, @NonNull Button btnToggleMic,
-      @NonNull CardView cardTranscript, @NonNull LinearLayout layoutActive,
-      @NonNull LinearLayout layoutIncoming, @NonNull ScrollView scrollHistory,
-      @NonNull TextView tvCaller, @NonNull TextView tvDuration, @NonNull TextView tvHistory,
-      @NonNull TextView tvLive, @NonNull TextView tvStatus) {
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-land/</li>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   * </ul>
+   */
+  @Nullable
+  public final TextView tvSummary;
+
+  private ActivityCallBinding(@NonNull ConstraintLayout rootView, @NonNull Barrier barrierButtons,
+      @NonNull Button btnAccept, @NonNull Button btnDecline, @NonNull Button btnHangUp,
+      @NonNull Button btnHangUpRinging, @NonNull Button btnLoeschen, @Nullable Button btnSpeaker,
+      @Nullable CardView cardSummary, @NonNull CardView cardTranscript,
+      @Nullable LinearLayout headerRow, @NonNull LinearLayout layoutActive,
+      @NonNull LinearLayout layoutCalling, @NonNull LinearLayout layoutIncoming,
+      @NonNull ScrollView scrollHistory, @Nullable LinearLayout transcriptRow,
+      @Nullable TextView tvBattery, @NonNull TextView tvCaller, @Nullable TextView tvCallerBig,
+      @NonNull TextView tvDuration, @NonNull TextView tvHistory, @NonNull TextView tvStatus,
+      @Nullable TextView tvSummary) {
     this.rootView = rootView;
+    this.barrierButtons = barrierButtons;
     this.btnAccept = btnAccept;
     this.btnDecline = btnDecline;
     this.btnHangUp = btnHangUp;
-    this.btnToggleMic = btnToggleMic;
+    this.btnHangUpRinging = btnHangUpRinging;
+    this.btnLoeschen = btnLoeschen;
+    this.btnSpeaker = btnSpeaker;
+    this.cardSummary = cardSummary;
     this.cardTranscript = cardTranscript;
+    this.headerRow = headerRow;
     this.layoutActive = layoutActive;
+    this.layoutCalling = layoutCalling;
     this.layoutIncoming = layoutIncoming;
     this.scrollHistory = scrollHistory;
+    this.transcriptRow = transcriptRow;
+    this.tvBattery = tvBattery;
     this.tvCaller = tvCaller;
+    this.tvCallerBig = tvCallerBig;
     this.tvDuration = tvDuration;
     this.tvHistory = tvHistory;
-    this.tvLive = tvLive;
     this.tvStatus = tvStatus;
+    this.tvSummary = tvSummary;
   }
 
   @Override
@@ -111,6 +250,12 @@ public final class ActivityCallBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.barrier_buttons;
+      Barrier barrierButtons = ViewBindings.findChildViewById(rootView, id);
+      if (barrierButtons == null) {
+        break missingId;
+      }
+
       id = R.id.btn_accept;
       Button btnAccept = ViewBindings.findChildViewById(rootView, id);
       if (btnAccept == null) {
@@ -129,11 +274,23 @@ public final class ActivityCallBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.btn_toggle_mic;
-      Button btnToggleMic = ViewBindings.findChildViewById(rootView, id);
-      if (btnToggleMic == null) {
+      id = R.id.btn_hang_up_ringing;
+      Button btnHangUpRinging = ViewBindings.findChildViewById(rootView, id);
+      if (btnHangUpRinging == null) {
         break missingId;
       }
+
+      id = R.id.btn_loeschen;
+      Button btnLoeschen = ViewBindings.findChildViewById(rootView, id);
+      if (btnLoeschen == null) {
+        break missingId;
+      }
+
+      id = R.id.btn_speaker;
+      Button btnSpeaker = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.card_summary;
+      CardView cardSummary = ViewBindings.findChildViewById(rootView, id);
 
       id = R.id.card_transcript;
       CardView cardTranscript = ViewBindings.findChildViewById(rootView, id);
@@ -141,9 +298,18 @@ public final class ActivityCallBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.header_row;
+      LinearLayout headerRow = ViewBindings.findChildViewById(rootView, id);
+
       id = R.id.layout_active;
       LinearLayout layoutActive = ViewBindings.findChildViewById(rootView, id);
       if (layoutActive == null) {
+        break missingId;
+      }
+
+      id = R.id.layout_calling;
+      LinearLayout layoutCalling = ViewBindings.findChildViewById(rootView, id);
+      if (layoutCalling == null) {
         break missingId;
       }
 
@@ -159,11 +325,20 @@ public final class ActivityCallBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.transcript_row;
+      LinearLayout transcriptRow = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.tv_battery;
+      TextView tvBattery = ViewBindings.findChildViewById(rootView, id);
+
       id = R.id.tv_caller;
       TextView tvCaller = ViewBindings.findChildViewById(rootView, id);
       if (tvCaller == null) {
         break missingId;
       }
+
+      id = R.id.tv_caller_big;
+      TextView tvCallerBig = ViewBindings.findChildViewById(rootView, id);
 
       id = R.id.tv_duration;
       TextView tvDuration = ViewBindings.findChildViewById(rootView, id);
@@ -177,21 +352,20 @@ public final class ActivityCallBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.tv_live;
-      TextView tvLive = ViewBindings.findChildViewById(rootView, id);
-      if (tvLive == null) {
-        break missingId;
-      }
-
       id = R.id.tv_status;
       TextView tvStatus = ViewBindings.findChildViewById(rootView, id);
       if (tvStatus == null) {
         break missingId;
       }
 
-      return new ActivityCallBinding((ConstraintLayout) rootView, btnAccept, btnDecline, btnHangUp,
-          btnToggleMic, cardTranscript, layoutActive, layoutIncoming, scrollHistory, tvCaller,
-          tvDuration, tvHistory, tvLive, tvStatus);
+      id = R.id.tv_summary;
+      TextView tvSummary = ViewBindings.findChildViewById(rootView, id);
+
+      return new ActivityCallBinding((ConstraintLayout) rootView, barrierButtons, btnAccept,
+          btnDecline, btnHangUp, btnHangUpRinging, btnLoeschen, btnSpeaker, cardSummary,
+          cardTranscript, headerRow, layoutActive, layoutCalling, layoutIncoming, scrollHistory,
+          transcriptRow, tvBattery, tvCaller, tvCallerBig, tvDuration, tvHistory, tvStatus,
+          tvSummary);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

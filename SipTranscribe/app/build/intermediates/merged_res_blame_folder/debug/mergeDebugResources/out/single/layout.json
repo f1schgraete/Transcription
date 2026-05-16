@@ -1,14 +1,22 @@
 [
     {
-        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-mergeDebugResources-33:\\layout\\activity_call.xml",
-        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\layout\\activity_call.xml"
+        "merged": "com.siptranscribe.app-mergeDebugResources-34:/layout/favourite_button.xml",
+        "source": "com.siptranscribe.app-main-37:/layout/favourite_button.xml"
     },
     {
-        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-mergeDebugResources-33:\\layout\\activity_main.xml",
-        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\layout\\activity_main.xml"
+        "merged": "com.siptranscribe.app-mergeDebugResources-34:/layout/widget_contact.xml",
+        "source": "com.siptranscribe.app-main-37:/layout/widget_contact.xml"
     },
     {
-        "merged": "com.siptranscribe.app-mergeDebugResources-33:/layout/activity_main.xml",
-        "source": "com.siptranscribe.app-main-36:/layout/activity_main.xml"
+        "merged": "com.siptranscribe.app-mergeDebugResources-34:/layout/activity_main.xml",
+        "source": "com.siptranscribe.app-main-37:/layout/activity_main.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-mergeDebugResources-34:/layout/activity_call.xml",
+        "source": "com.siptranscribe.app-main-37:/layout/activity_call.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-mergeDebugResources-34:/layout/activity_contact_suggestions.xml",
+        "source": "com.siptranscribe.app-main-37:/layout/activity_contact_suggestions.xml"
     }
 ]

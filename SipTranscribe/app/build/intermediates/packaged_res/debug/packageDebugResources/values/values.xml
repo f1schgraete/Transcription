@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="favourite_counts">
+        <item>2</item>
+        <item>4</item>
+        <item>6</item>
+    </string-array>
     <string-array name="media_encryptions">
         <item>Keine</item>
         <item>SRTP</item>
         <item>ZRTP</item>
         <item>DTLS</item>
+    </string-array>
+    <string-array name="stt_providers">
+        <item>Azure</item>
+        <item>Google</item>
     </string-array>
     <string-array name="transport_types">
         <item>UDP</item>
@@ -27,7 +36,7 @@
     <color name="text_on_dark_secondary">#B0BEC5</color>
     <color name="text_primary">#1A1A2E</color>
     <color name="transcript_bg">#FFFFFF</color>
-    <string name="app_name">SIP Untertitel</string>
+    <string name="app_name">Text-Telefon</string>
     <style name="DialButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">64dp</item>
@@ -37,7 +46,7 @@
         <item name="android:textStyle">bold</item>
         <item name="android:layout_margin">4dp</item>
     </style>
-    <style name="Theme.SipTranscribe" parent="Theme.MaterialComponents.Light.DarkActionBar">
+    <style name="Theme.SipTranscribe" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/accent</item>
         <item name="colorPrimaryVariant">#0D47A1</item>
         <item name="colorOnPrimary">@color/text_on_dark</item>

@@ -6,9 +6,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -23,10 +24,30 @@ import java.lang.String;
 
 public final class ActivityMainBinding implements ViewBinding {
   @NonNull
-  private final ScrollView rootView;
+  private final LinearLayout rootView;
+
+  @NonNull
+  public final AutoCompleteTextView actvFavouriteCount;
 
   @NonNull
   public final AutoCompleteTextView actvMediaEnc;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final AutoCompleteTextView actvSttProvider;
 
   @NonNull
   public final AutoCompleteTextView actvTransport;
@@ -68,10 +89,121 @@ public final class ActivityMainBinding implements ViewBinding {
   public final Button btnCall;
 
   @NonNull
+  public final Button btnContactSuggestions;
+
+  @NonNull
   public final Button btnDelete;
 
   @NonNull
+  public final Button btnDiagnostics;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnFav0;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnFav1;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnFav2;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnFav3;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnFav4;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnFav5;
+
+  @NonNull
   public final Button btnHash;
+
+  @NonNull
+  public final Button btnLogout;
 
   @NonNull
   public final Button btnPlus;
@@ -80,16 +212,131 @@ public final class ActivityMainBinding implements ViewBinding {
   public final Button btnRegister;
 
   @NonNull
+  public final Button btnResetPrompt;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnSectionDiag;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnSectionDisplay;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnSectionMailbox;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final Button btnSectionSummary;
+
+  @NonNull
   public final Button btnSettings;
 
   @NonNull
   public final Button btnStar;
 
   @NonNull
+  public final Button btnTestStt;
+
+  @NonNull
+  public final CardView cardContacts;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final CardView cardFavourites;
+
+  @NonNull
+  public final CardView cardRecentCalls;
+
+  @NonNull
   public final CardView cardSettings;
 
   @NonNull
+  public final CheckBox cbMailboxEnabled;
+
+  @NonNull
+  public final CheckBox cbTranscriptShowLocal;
+
+  @NonNull
+  public final CheckBox cbUseSrv;
+
+  @NonNull
   public final TextInputEditText etAuthUser;
+
+  @NonNull
+  public final TextInputEditText etAzureDeployment;
+
+  @NonNull
+  public final TextInputEditText etAzureEndpoint;
+
+  @NonNull
+  public final TextInputEditText etAzureKey;
 
   @NonNull
   public final TextInputEditText etDisplayName;
@@ -99,6 +346,46 @@ public final class ActivityMainBinding implements ViewBinding {
 
   @NonNull
   public final TextInputEditText etExpires;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final TextInputEditText etGoogleSttKey;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final TextInputEditText etGoogleSttLanguage;
+
+  @NonNull
+  public final TextInputEditText etMailboxGreeting;
+
+  @NonNull
+  public final TextInputEditText etMailboxTimeout;
 
   @NonNull
   public final TextInputEditText etOutboundProxy;
@@ -116,30 +403,191 @@ public final class ActivityMainBinding implements ViewBinding {
   public final TextInputEditText etRealm;
 
   @NonNull
+  public final TextInputEditText etSummaryInterval;
+
+  @NonNull
+  public final TextInputEditText etSummaryPrompt;
+
+  @NonNull
   public final TextInputEditText etUsername;
 
   @NonNull
   public final LinearLayout layoutAdvanced;
 
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final LinearLayout layoutSectionDiag;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final LinearLayout layoutSectionDisplay;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final LinearLayout layoutSectionMailbox;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final LinearLayout layoutSectionSummary;
+
+  @NonNull
+  public final LinearLayout llCallHistory;
+
+  @NonNull
+  public final LinearLayout llContacts;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final GridLayout llFavourites;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-land/</li>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   * </ul>
+   */
+  @Nullable
+  public final TextView tvBattery;
+
+  /**
+   * This binding is not available in all configurations.
+   * <p>
+   * Present:
+   * <ul>
+   *   <li>layout-sw600dp/</li>
+   * </ul>
+   *
+   * Absent:
+   * <ul>
+   *   <li>layout/</li>
+   *   <li>layout-land/</li>
+   * </ul>
+   */
+  @Nullable
+  public final TextView tvChargeHint;
+
+  @NonNull
+  public final TextView tvNoCalls;
+
+  @NonNull
+  public final TextView tvNoContacts;
+
   @NonNull
   public final TextView tvStatus;
 
-  private ActivityMainBinding(@NonNull ScrollView rootView,
-      @NonNull AutoCompleteTextView actvMediaEnc, @NonNull AutoCompleteTextView actvTransport,
+  @NonNull
+  public final TextView tvTestResult;
+
+  private ActivityMainBinding(@NonNull LinearLayout rootView,
+      @NonNull AutoCompleteTextView actvFavouriteCount, @NonNull AutoCompleteTextView actvMediaEnc,
+      @Nullable AutoCompleteTextView actvSttProvider, @NonNull AutoCompleteTextView actvTransport,
       @NonNull Button btn0, @NonNull Button btn1, @NonNull Button btn2, @NonNull Button btn3,
       @NonNull Button btn4, @NonNull Button btn5, @NonNull Button btn6, @NonNull Button btn7,
       @NonNull Button btn8, @NonNull Button btn9, @NonNull Button btnAdvanced,
-      @NonNull Button btnCall, @NonNull Button btnDelete, @NonNull Button btnHash,
-      @NonNull Button btnPlus, @NonNull Button btnRegister, @NonNull Button btnSettings,
-      @NonNull Button btnStar, @NonNull CardView cardSettings,
-      @NonNull TextInputEditText etAuthUser, @NonNull TextInputEditText etDisplayName,
+      @NonNull Button btnCall, @NonNull Button btnContactSuggestions, @NonNull Button btnDelete,
+      @NonNull Button btnDiagnostics, @Nullable Button btnFav0, @Nullable Button btnFav1,
+      @Nullable Button btnFav2, @Nullable Button btnFav3, @Nullable Button btnFav4,
+      @Nullable Button btnFav5, @NonNull Button btnHash, @NonNull Button btnLogout,
+      @NonNull Button btnPlus, @NonNull Button btnRegister, @NonNull Button btnResetPrompt,
+      @Nullable Button btnSectionDiag, @Nullable Button btnSectionDisplay,
+      @Nullable Button btnSectionMailbox, @Nullable Button btnSectionSummary,
+      @NonNull Button btnSettings, @NonNull Button btnStar, @NonNull Button btnTestStt,
+      @NonNull CardView cardContacts, @Nullable CardView cardFavourites,
+      @NonNull CardView cardRecentCalls, @NonNull CardView cardSettings,
+      @NonNull CheckBox cbMailboxEnabled, @NonNull CheckBox cbTranscriptShowLocal,
+      @NonNull CheckBox cbUseSrv, @NonNull TextInputEditText etAuthUser,
+      @NonNull TextInputEditText etAzureDeployment, @NonNull TextInputEditText etAzureEndpoint,
+      @NonNull TextInputEditText etAzureKey, @NonNull TextInputEditText etDisplayName,
       @NonNull TextInputEditText etDomain, @NonNull TextInputEditText etExpires,
+      @Nullable TextInputEditText etGoogleSttKey, @Nullable TextInputEditText etGoogleSttLanguage,
+      @NonNull TextInputEditText etMailboxGreeting, @NonNull TextInputEditText etMailboxTimeout,
       @NonNull TextInputEditText etOutboundProxy, @NonNull TextInputEditText etPassword,
       @NonNull EditText etPhone, @NonNull TextInputEditText etPort,
-      @NonNull TextInputEditText etRealm, @NonNull TextInputEditText etUsername,
-      @NonNull LinearLayout layoutAdvanced, @NonNull TextView tvStatus) {
+      @NonNull TextInputEditText etRealm, @NonNull TextInputEditText etSummaryInterval,
+      @NonNull TextInputEditText etSummaryPrompt, @NonNull TextInputEditText etUsername,
+      @NonNull LinearLayout layoutAdvanced, @Nullable LinearLayout layoutSectionDiag,
+      @Nullable LinearLayout layoutSectionDisplay, @Nullable LinearLayout layoutSectionMailbox,
+      @Nullable LinearLayout layoutSectionSummary, @NonNull LinearLayout llCallHistory,
+      @NonNull LinearLayout llContacts, @Nullable GridLayout llFavourites,
+      @Nullable TextView tvBattery, @Nullable TextView tvChargeHint, @NonNull TextView tvNoCalls,
+      @NonNull TextView tvNoContacts, @NonNull TextView tvStatus, @NonNull TextView tvTestResult) {
     this.rootView = rootView;
+    this.actvFavouriteCount = actvFavouriteCount;
     this.actvMediaEnc = actvMediaEnc;
+    this.actvSttProvider = actvSttProvider;
     this.actvTransport = actvTransport;
     this.btn0 = btn0;
     this.btn1 = btn1;
@@ -153,30 +601,72 @@ public final class ActivityMainBinding implements ViewBinding {
     this.btn9 = btn9;
     this.btnAdvanced = btnAdvanced;
     this.btnCall = btnCall;
+    this.btnContactSuggestions = btnContactSuggestions;
     this.btnDelete = btnDelete;
+    this.btnDiagnostics = btnDiagnostics;
+    this.btnFav0 = btnFav0;
+    this.btnFav1 = btnFav1;
+    this.btnFav2 = btnFav2;
+    this.btnFav3 = btnFav3;
+    this.btnFav4 = btnFav4;
+    this.btnFav5 = btnFav5;
     this.btnHash = btnHash;
+    this.btnLogout = btnLogout;
     this.btnPlus = btnPlus;
     this.btnRegister = btnRegister;
+    this.btnResetPrompt = btnResetPrompt;
+    this.btnSectionDiag = btnSectionDiag;
+    this.btnSectionDisplay = btnSectionDisplay;
+    this.btnSectionMailbox = btnSectionMailbox;
+    this.btnSectionSummary = btnSectionSummary;
     this.btnSettings = btnSettings;
     this.btnStar = btnStar;
+    this.btnTestStt = btnTestStt;
+    this.cardContacts = cardContacts;
+    this.cardFavourites = cardFavourites;
+    this.cardRecentCalls = cardRecentCalls;
     this.cardSettings = cardSettings;
+    this.cbMailboxEnabled = cbMailboxEnabled;
+    this.cbTranscriptShowLocal = cbTranscriptShowLocal;
+    this.cbUseSrv = cbUseSrv;
     this.etAuthUser = etAuthUser;
+    this.etAzureDeployment = etAzureDeployment;
+    this.etAzureEndpoint = etAzureEndpoint;
+    this.etAzureKey = etAzureKey;
     this.etDisplayName = etDisplayName;
     this.etDomain = etDomain;
     this.etExpires = etExpires;
+    this.etGoogleSttKey = etGoogleSttKey;
+    this.etGoogleSttLanguage = etGoogleSttLanguage;
+    this.etMailboxGreeting = etMailboxGreeting;
+    this.etMailboxTimeout = etMailboxTimeout;
     this.etOutboundProxy = etOutboundProxy;
     this.etPassword = etPassword;
     this.etPhone = etPhone;
     this.etPort = etPort;
     this.etRealm = etRealm;
+    this.etSummaryInterval = etSummaryInterval;
+    this.etSummaryPrompt = etSummaryPrompt;
     this.etUsername = etUsername;
     this.layoutAdvanced = layoutAdvanced;
+    this.layoutSectionDiag = layoutSectionDiag;
+    this.layoutSectionDisplay = layoutSectionDisplay;
+    this.layoutSectionMailbox = layoutSectionMailbox;
+    this.layoutSectionSummary = layoutSectionSummary;
+    this.llCallHistory = llCallHistory;
+    this.llContacts = llContacts;
+    this.llFavourites = llFavourites;
+    this.tvBattery = tvBattery;
+    this.tvChargeHint = tvChargeHint;
+    this.tvNoCalls = tvNoCalls;
+    this.tvNoContacts = tvNoContacts;
     this.tvStatus = tvStatus;
+    this.tvTestResult = tvTestResult;
   }
 
   @Override
   @NonNull
-  public ScrollView getRoot() {
+  public LinearLayout getRoot() {
     return rootView;
   }
 
@@ -201,11 +691,20 @@ public final class ActivityMainBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.actv_favourite_count;
+      AutoCompleteTextView actvFavouriteCount = ViewBindings.findChildViewById(rootView, id);
+      if (actvFavouriteCount == null) {
+        break missingId;
+      }
+
       id = R.id.actv_media_enc;
       AutoCompleteTextView actvMediaEnc = ViewBindings.findChildViewById(rootView, id);
       if (actvMediaEnc == null) {
         break missingId;
       }
+
+      id = R.id.actv_stt_provider;
+      AutoCompleteTextView actvSttProvider = ViewBindings.findChildViewById(rootView, id);
 
       id = R.id.actv_transport;
       AutoCompleteTextView actvTransport = ViewBindings.findChildViewById(rootView, id);
@@ -285,15 +784,51 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.btn_contact_suggestions;
+      Button btnContactSuggestions = ViewBindings.findChildViewById(rootView, id);
+      if (btnContactSuggestions == null) {
+        break missingId;
+      }
+
       id = R.id.btn_delete;
       Button btnDelete = ViewBindings.findChildViewById(rootView, id);
       if (btnDelete == null) {
         break missingId;
       }
 
+      id = R.id.btn_diagnostics;
+      Button btnDiagnostics = ViewBindings.findChildViewById(rootView, id);
+      if (btnDiagnostics == null) {
+        break missingId;
+      }
+
+      id = R.id.btn_fav_0;
+      Button btnFav0 = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.btn_fav_1;
+      Button btnFav1 = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.btn_fav_2;
+      Button btnFav2 = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.btn_fav_3;
+      Button btnFav3 = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.btn_fav_4;
+      Button btnFav4 = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.btn_fav_5;
+      Button btnFav5 = ViewBindings.findChildViewById(rootView, id);
+
       id = R.id.btn_hash;
       Button btnHash = ViewBindings.findChildViewById(rootView, id);
       if (btnHash == null) {
+        break missingId;
+      }
+
+      id = R.id.btn_logout;
+      Button btnLogout = ViewBindings.findChildViewById(rootView, id);
+      if (btnLogout == null) {
         break missingId;
       }
 
@@ -309,6 +844,24 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.btn_reset_prompt;
+      Button btnResetPrompt = ViewBindings.findChildViewById(rootView, id);
+      if (btnResetPrompt == null) {
+        break missingId;
+      }
+
+      id = R.id.btn_section_diag;
+      Button btnSectionDiag = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.btn_section_display;
+      Button btnSectionDisplay = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.btn_section_mailbox;
+      Button btnSectionMailbox = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.btn_section_summary;
+      Button btnSectionSummary = ViewBindings.findChildViewById(rootView, id);
+
       id = R.id.btn_settings;
       Button btnSettings = ViewBindings.findChildViewById(rootView, id);
       if (btnSettings == null) {
@@ -321,15 +874,72 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.btn_test_stt;
+      Button btnTestStt = ViewBindings.findChildViewById(rootView, id);
+      if (btnTestStt == null) {
+        break missingId;
+      }
+
+      id = R.id.card_contacts;
+      CardView cardContacts = ViewBindings.findChildViewById(rootView, id);
+      if (cardContacts == null) {
+        break missingId;
+      }
+
+      id = R.id.card_favourites;
+      CardView cardFavourites = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.card_recent_calls;
+      CardView cardRecentCalls = ViewBindings.findChildViewById(rootView, id);
+      if (cardRecentCalls == null) {
+        break missingId;
+      }
+
       id = R.id.card_settings;
       CardView cardSettings = ViewBindings.findChildViewById(rootView, id);
       if (cardSettings == null) {
         break missingId;
       }
 
+      id = R.id.cb_mailbox_enabled;
+      CheckBox cbMailboxEnabled = ViewBindings.findChildViewById(rootView, id);
+      if (cbMailboxEnabled == null) {
+        break missingId;
+      }
+
+      id = R.id.cb_transcript_show_local;
+      CheckBox cbTranscriptShowLocal = ViewBindings.findChildViewById(rootView, id);
+      if (cbTranscriptShowLocal == null) {
+        break missingId;
+      }
+
+      id = R.id.cb_use_srv;
+      CheckBox cbUseSrv = ViewBindings.findChildViewById(rootView, id);
+      if (cbUseSrv == null) {
+        break missingId;
+      }
+
       id = R.id.et_auth_user;
       TextInputEditText etAuthUser = ViewBindings.findChildViewById(rootView, id);
       if (etAuthUser == null) {
+        break missingId;
+      }
+
+      id = R.id.et_azure_deployment;
+      TextInputEditText etAzureDeployment = ViewBindings.findChildViewById(rootView, id);
+      if (etAzureDeployment == null) {
+        break missingId;
+      }
+
+      id = R.id.et_azure_endpoint;
+      TextInputEditText etAzureEndpoint = ViewBindings.findChildViewById(rootView, id);
+      if (etAzureEndpoint == null) {
+        break missingId;
+      }
+
+      id = R.id.et_azure_key;
+      TextInputEditText etAzureKey = ViewBindings.findChildViewById(rootView, id);
+      if (etAzureKey == null) {
         break missingId;
       }
 
@@ -348,6 +958,24 @@ public final class ActivityMainBinding implements ViewBinding {
       id = R.id.et_expires;
       TextInputEditText etExpires = ViewBindings.findChildViewById(rootView, id);
       if (etExpires == null) {
+        break missingId;
+      }
+
+      id = R.id.et_google_stt_key;
+      TextInputEditText etGoogleSttKey = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.et_google_stt_language;
+      TextInputEditText etGoogleSttLanguage = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.et_mailbox_greeting;
+      TextInputEditText etMailboxGreeting = ViewBindings.findChildViewById(rootView, id);
+      if (etMailboxGreeting == null) {
+        break missingId;
+      }
+
+      id = R.id.et_mailbox_timeout;
+      TextInputEditText etMailboxTimeout = ViewBindings.findChildViewById(rootView, id);
+      if (etMailboxTimeout == null) {
         break missingId;
       }
 
@@ -381,6 +1009,18 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.et_summary_interval;
+      TextInputEditText etSummaryInterval = ViewBindings.findChildViewById(rootView, id);
+      if (etSummaryInterval == null) {
+        break missingId;
+      }
+
+      id = R.id.et_summary_prompt;
+      TextInputEditText etSummaryPrompt = ViewBindings.findChildViewById(rootView, id);
+      if (etSummaryPrompt == null) {
+        break missingId;
+      }
+
       id = R.id.et_username;
       TextInputEditText etUsername = ViewBindings.findChildViewById(rootView, id);
       if (etUsername == null) {
@@ -393,17 +1033,76 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.layout_section_diag;
+      LinearLayout layoutSectionDiag = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.layout_section_display;
+      LinearLayout layoutSectionDisplay = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.layout_section_mailbox;
+      LinearLayout layoutSectionMailbox = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.layout_section_summary;
+      LinearLayout layoutSectionSummary = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.ll_call_history;
+      LinearLayout llCallHistory = ViewBindings.findChildViewById(rootView, id);
+      if (llCallHistory == null) {
+        break missingId;
+      }
+
+      id = R.id.ll_contacts;
+      LinearLayout llContacts = ViewBindings.findChildViewById(rootView, id);
+      if (llContacts == null) {
+        break missingId;
+      }
+
+      id = R.id.ll_favourites;
+      GridLayout llFavourites = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.tv_battery;
+      TextView tvBattery = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.tv_charge_hint;
+      TextView tvChargeHint = ViewBindings.findChildViewById(rootView, id);
+
+      id = R.id.tv_no_calls;
+      TextView tvNoCalls = ViewBindings.findChildViewById(rootView, id);
+      if (tvNoCalls == null) {
+        break missingId;
+      }
+
+      id = R.id.tv_no_contacts;
+      TextView tvNoContacts = ViewBindings.findChildViewById(rootView, id);
+      if (tvNoContacts == null) {
+        break missingId;
+      }
+
       id = R.id.tv_status;
       TextView tvStatus = ViewBindings.findChildViewById(rootView, id);
       if (tvStatus == null) {
         break missingId;
       }
 
-      return new ActivityMainBinding((ScrollView) rootView, actvMediaEnc, actvTransport, btn0, btn1,
-          btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btnAdvanced, btnCall, btnDelete, btnHash,
-          btnPlus, btnRegister, btnSettings, btnStar, cardSettings, etAuthUser, etDisplayName,
-          etDomain, etExpires, etOutboundProxy, etPassword, etPhone, etPort, etRealm, etUsername,
-          layoutAdvanced, tvStatus);
+      id = R.id.tv_test_result;
+      TextView tvTestResult = ViewBindings.findChildViewById(rootView, id);
+      if (tvTestResult == null) {
+        break missingId;
+      }
+
+      return new ActivityMainBinding((LinearLayout) rootView, actvFavouriteCount, actvMediaEnc,
+          actvSttProvider, actvTransport, btn0, btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8,
+          btn9, btnAdvanced, btnCall, btnContactSuggestions, btnDelete, btnDiagnostics, btnFav0,
+          btnFav1, btnFav2, btnFav3, btnFav4, btnFav5, btnHash, btnLogout, btnPlus, btnRegister,
+          btnResetPrompt, btnSectionDiag, btnSectionDisplay, btnSectionMailbox, btnSectionSummary,
+          btnSettings, btnStar, btnTestStt, cardContacts, cardFavourites, cardRecentCalls,
+          cardSettings, cbMailboxEnabled, cbTranscriptShowLocal, cbUseSrv, etAuthUser,
+          etAzureDeployment, etAzureEndpoint, etAzureKey, etDisplayName, etDomain, etExpires,
+          etGoogleSttKey, etGoogleSttLanguage, etMailboxGreeting, etMailboxTimeout, etOutboundProxy,
+          etPassword, etPhone, etPort, etRealm, etSummaryInterval, etSummaryPrompt, etUsername,
+          layoutAdvanced, layoutSectionDiag, layoutSectionDisplay, layoutSectionMailbox,
+          layoutSectionSummary, llCallHistory, llContacts, llFavourites, tvBattery, tvChargeHint,
+          tvNoCalls, tvNoContacts, tvStatus, tvTestResult);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

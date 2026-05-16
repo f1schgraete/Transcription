@@ -53,4 +53,41 @@ dependencies {
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
     // Azure Cognitive Services Speech SDK — streams PCM to Azure via PushAudioInputStream.
     implementation 'com.microsoft.cognitiveservices.speech:client-sdk:1.37.0'
+
+    // Google Cloud Speech-to-Text streaming gRPC client. We exclude the
+    // netty-shaded transport that the library defaults to (it uses BoringSSL
+    // native libs that don't ship for all Android ABIs) and bring in
+    // grpc-okhttp instead, which is the supported Android transport.
+    implementation('com.google.cloud:google-cloud-speech:4.34.0') {
+        exclude group: 'io.grpc', module: 'grpc-netty-shaded'
+        exclude group: 'io.grpc', module: 'grpc-netty'
+    }
+    implementation 'io.grpc:grpc-okhttp:1.62.2'
+}
+
+// google-cloud-speech ships a couple of `META-INF/*.properties` and
+// duplicate licence files that conflict across its transitive deps when
+// merged into an APK. The exclude list below keeps the build happy
+// without dropping anything we actually need at runtime.
+android {
+    packagingOptions {
+        resources {
+            excludes += [
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE*",
+                "META-INF/NOTICE*",
+                "META-INF/INDEX.LIST",
+                "META-INF/io.netty.versions.properties",
+                "META-INF/native-image/**",
+                "META-INF/services/io.grpc.ManagedChannelProvider",
+                "META-INF/services/io.grpc.NameResolverProvider",
+                "META-INF/services/io.grpc.ServerProvider",
+                "META-INF/services/io.grpc.LoadBalancerProvider"
+            ]
+            pickFirsts += [
+                "META-INF/services/io.grpc.ManagedChannelProvider",
+                "META-INF/services/io.grpc.NameResolverProvider"
+            ]
+        }
+    }
 }

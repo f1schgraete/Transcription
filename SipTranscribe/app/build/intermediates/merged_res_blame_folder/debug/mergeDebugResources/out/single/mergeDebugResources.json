@@ -1,30 +1,62 @@
 [
     {
-        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
+        "merged": "com.siptranscribe.app-debug-35:/layout_widget_contact.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/layout/widget_contact.xml"
     },
     {
-        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\layout_activity_main.xml.flat",
-        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\layout\\activity_main.xml"
+        "merged": "com.siptranscribe.app-debug-35:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/mipmap-anydpi-v26/ic_launcher_round.xml"
     },
     {
-        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\drawable_ic_phone.xml.flat",
-        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\drawable\\ic_phone.xml"
+        "merged": "com.siptranscribe.app-debug-35:/layout_activity_contact_suggestions.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/layout/activity_contact_suggestions.xml"
     },
     {
-        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\mipmap-anydpi-v26\\ic_launcher.xml"
+        "merged": "com.siptranscribe.app-debug-35:/layout_activity_main.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/layout/activity_main.xml"
     },
     {
-        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\drawable_ic_launcher_foreground.xml.flat",
-        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\drawable\\ic_launcher_foreground.xml"
+        "merged": "com.siptranscribe.app-debug-35:/layout-sw600dp_activity_main.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/layout-sw600dp/activity_main.xml"
     },
     {
-        "merged": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-debug-34:\\layout_activity_call.xml.flat",
-        "source": "C:\\Users\\famil\\.gradle\\daemon\\8.6\\com.siptranscribe.app-main-36:\\layout\\activity_call.xml"
+        "merged": "com.siptranscribe.app-debug-35:/layout-sw600dp_activity_call.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/layout-sw600dp/activity_call.xml"
     },
     {
-        "merged": "com.siptranscribe.app-debug-34:/layout_activity_main.xml.flat",
-        "source": "com.siptranscribe.app-main-36:/layout/activity_main.xml"
+        "merged": "com.siptranscribe.app-debug-35:/drawable_ic_phone.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/drawable/ic_phone.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-debug-35:/layout_favourite_button.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/layout/favourite_button.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-debug-35:/xml_contact_widget_info.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/xml/contact_widget_info.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-debug-35:/layout_activity_call.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/layout/activity_call.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-debug-35:/layout-land_activity_call.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/layout-land/activity_call.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-debug-35:/drawable_widget_background.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/drawable/widget_background.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-debug-35:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-debug-35:/layout-land_activity_main.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/layout-land/activity_main.xml"
+    },
+    {
+        "merged": "com.siptranscribe.app-debug-35:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.siptranscribe.app-main-37:/mipmap-anydpi-v26/ic_launcher.xml"
     }
 ]
