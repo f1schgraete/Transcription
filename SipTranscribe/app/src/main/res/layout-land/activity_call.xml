@@ -178,6 +178,24 @@
 
     </LinearLayout>
 
+    <!-- Big caller-name banner during ringing only; hidden once the call goes active. -->
+    <TextView
+        android:id="@+id/tv_caller_big"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:gravity="center"
+        android:textSize="44sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_on_dark"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:padding="16dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/header_row"
+        app:layout_constraintBottom_toTopOf="@id/barrier_buttons"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <!-- Barrier sits at the top of whichever button layout is currently visible. -->
     <androidx.constraintlayout.widget.Barrier
         android:id="@+id/barrier_buttons"

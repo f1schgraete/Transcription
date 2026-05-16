@@ -175,6 +175,31 @@
 
     </LinearLayout>
 
+    <!--
+        Big caller-name banner. Shown only while the call is ringing
+        (incoming or outgoing setup) so the user instantly knows who is
+        on the other end without having to read the small header. Hidden
+        from showActiveUI onwards. Constrained to fill the same area as
+        transcript_row so transcript_row can stay GONE during ringing
+        and there's no visual jumping when the active UI takes over.
+    -->
+    <TextView
+        android:id="@+id/tv_caller_big"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:gravity="center"
+        android:textSize="64sp"
+        android:textStyle="bold"
+        android:textColor="@color/text_on_dark"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:padding="24dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/header_row"
+        app:layout_constraintBottom_toTopOf="@id/barrier_buttons"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <!-- Sits at the top of whichever button layout is currently visible. -->
     <androidx.constraintlayout.widget.Barrier
         android:id="@+id/barrier_buttons"

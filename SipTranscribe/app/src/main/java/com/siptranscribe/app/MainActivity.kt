@@ -86,6 +86,22 @@ class MainActivity : AppCompatActivity() {
         const val KEY_SUMMARY_PROMPT = "summary_prompt"
         const val KEY_USE_SRV = "use_dns_srv"
         const val KEY_SUMMARY_INTERVAL = "summary_interval_seconds"
+
+        /**
+         * STT provider choice and credentials.
+         *
+         * Azure keeps the existing two-mono-streams flow (one
+         * AzureSttEngine per call leg). Google supports per-channel
+         * recognition on stereo input — when selected, TranscriptionManager
+         * interleaves the two mono recordings into stereo and feeds a
+         * single GoogleSttEngine. See [STT_PROVIDER_AZURE] / [STT_PROVIDER_GOOGLE].
+         */
+        const val KEY_STT_PROVIDER = "stt_provider"
+        const val KEY_GOOGLE_STT_KEY = "google_stt_key"
+        const val KEY_GOOGLE_STT_LANGUAGE = "google_stt_language"
+        const val STT_PROVIDER_AZURE = "azure"
+        const val STT_PROVIDER_GOOGLE = "google"
+        const val DEFAULT_GOOGLE_STT_LANGUAGE = "de-DE"
         /** When false (the default), the elderly user's own voice doesn't
          *  appear in the live transcript pane. We still record and feed
          *  both directions to the analyser so the summary stays useful. */
@@ -213,6 +229,19 @@ class MainActivity : AppCompatActivity() {
         binding.actvMediaEnc.setAdapter(mediaEncAdapter)
         binding.actvMediaEnc.threshold = 0
         binding.actvMediaEnc.setOnClickListener { binding.actvMediaEnc.showDropDown() }
+
+        // STT provider dropdown. Nullable because the field only exists on
+        // the tablet layout for now (layout-sw600dp). Same threshold-0 +
+        // forced showDropDown pattern as the other dropdowns.
+        binding.actvSttProvider?.let { provider ->
+            val sttAdapter = ArrayAdapter(
+                this, android.R.layout.simple_dropdown_item_1line,
+                resources.getStringArray(R.array.stt_providers)
+            )
+            provider.setAdapter(sttAdapter)
+            provider.threshold = 0
+            provider.setOnClickListener { provider.showDropDown() }
+        }
 
         // Favourite-count dropdown. Selection is applied live so the
         // caregiver sees the new tile count in the middle column without
@@ -967,6 +996,16 @@ class MainActivity : AppCompatActivity() {
         binding.etAzureEndpoint.setText(prefs.getString(KEY_AZURE_ENDPOINT, ""))
         binding.etAzureKey.setText(prefs.getString(KEY_AZURE_KEY, ""))
         binding.etAzureDeployment.setText(prefs.getString(KEY_AZURE_DEPLOYMENT, ""))
+        // STT provider stays in prefs as a lowercase key ("azure" / "google")
+        // but is shown to the user via the capitalised array entries.
+        val providerKey = prefs.getString(KEY_STT_PROVIDER, STT_PROVIDER_AZURE)
+        val providerLabel =
+            if (providerKey == STT_PROVIDER_GOOGLE) "Google" else "Azure"
+        binding.actvSttProvider?.setText(providerLabel, false)
+        binding.etGoogleSttKey?.setText(prefs.getString(KEY_GOOGLE_STT_KEY, ""))
+        binding.etGoogleSttLanguage?.setText(
+            prefs.getString(KEY_GOOGLE_STT_LANGUAGE, DEFAULT_GOOGLE_STT_LANGUAGE)
+        )
         binding.etSummaryPrompt.setText(
             prefs.getString(KEY_SUMMARY_PROMPT, ConversationAnalyzer.DEFAULT_SYSTEM_PROMPT)
         )
@@ -1030,6 +1069,19 @@ class MainActivity : AppCompatActivity() {
             putString(KEY_AZURE_ENDPOINT, binding.etAzureEndpoint.text.toString().trim())
             putString(KEY_AZURE_KEY, binding.etAzureKey.text.toString().trim())
             putString(KEY_AZURE_DEPLOYMENT, binding.etAzureDeployment.text.toString().trim())
+            val providerLabel = binding.actvSttProvider?.text?.toString().orEmpty()
+            putString(
+                KEY_STT_PROVIDER,
+                if (providerLabel.equals("Google", ignoreCase = true)) STT_PROVIDER_GOOGLE
+                else STT_PROVIDER_AZURE
+            )
+            binding.etGoogleSttKey?.let {
+                putString(KEY_GOOGLE_STT_KEY, it.text.toString().trim())
+            }
+            binding.etGoogleSttLanguage?.let {
+                val lang = it.text.toString().trim().ifEmpty { DEFAULT_GOOGLE_STT_LANGUAGE }
+                putString(KEY_GOOGLE_STT_LANGUAGE, lang)
+            }
             putString(KEY_SUMMARY_PROMPT, binding.etSummaryPrompt.text.toString())
             // Allow blank or invalid input to fall back to the default rather
             // than persisting a bad value the user can't see in the UI.

@@ -277,10 +277,61 @@
                                     android:textSize="16sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
+                            <!--
+                                STT provider switcher. Azure uses the existing
+                                two-mono-streams flow; Google uses one stereo
+                                stream with per-channel recognition. The fields
+                                below are common to both providers; the
+                                provider-specific ones (Google key / language,
+                                Azure endpoint / key) live in their own groups.
+                            -->
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:hint="Endpunkt-URL"
+                                android:hint="STT-Anbieter"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                                <AutoCompleteTextView
+                                    android:id="@+id/actv_stt_provider"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="none"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Google API-Schl&#xFC;ssel"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                                app:passwordToggleEnabled="true">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_google_stt_key"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="textPassword"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Google Sprache (z. B. de-DE)"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_google_stt_language"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="text"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Azure-Endpunkt-URL"
                                 android:layout_marginTop="10dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText
@@ -294,7 +345,7 @@
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:hint="API-Schl&#xFC;ssel"
+                                android:hint="Azure API-Schl&#xFC;ssel"
                                 android:layout_marginTop="10dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                                 app:passwordToggleEnabled="true">
@@ -309,7 +360,7 @@
                             <com.google.android.material.textfield.TextInputLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:hint="Chat-Deployment (z. B. gpt-4o-mini)"
+                                android:hint="Azure Chat-Deployment (z. B. gpt-4o-mini)"
                                 android:layout_marginTop="10dp"
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
                                 <com.google.android.material.textfield.TextInputEditText

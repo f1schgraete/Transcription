@@ -1,6 +1,7 @@
 package com.siptranscribe.app
 
 import android.app.NotificationManager
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
@@ -651,6 +652,7 @@ class CallActivity : AppCompatActivity() {
         binding.layoutIncoming.visibility = View.VISIBLE
         binding.layoutActive.visibility = View.GONE
         binding.tvStatus.text = "Eingehender Anruf"
+        showBigCallerName(true)
     }
 
     private fun showCallingUI() {
@@ -658,6 +660,7 @@ class CallActivity : AppCompatActivity() {
         binding.layoutIncoming.visibility = View.GONE
         binding.layoutActive.visibility = View.GONE
         binding.tvStatus.text = "Verbinde..."
+        showBigCallerName(true)
     }
 
     private fun showActiveUI() {
@@ -666,6 +669,31 @@ class CallActivity : AppCompatActivity() {
         binding.layoutIncoming.visibility = View.GONE
         binding.layoutActive.visibility = View.VISIBLE
         binding.tvStatus.text = "Aktiver Anruf"
+        showBigCallerName(false)
+    }
+
+    /**
+     * Toggles the big-name banner that sits over the transcript area while
+     * the call is still ringing. The transcript card is also flipped — it
+     * would otherwise show a thin empty card behind the banner, which looks
+     * broken. Once the call goes active the banner hides and the transcript
+     * card returns as the primary content area.
+     *
+     * Binding fields are nullable because some layout variants (e.g. legacy
+     * portrait) don't include `tv_caller_big`; in that case we just no-op.
+     */
+    private fun showBigCallerName(visible: Boolean) {
+        val big = binding.tvCallerBig ?: return
+        if (visible) {
+            big.text = callerName
+            big.visibility = View.VISIBLE
+            binding.cardTranscript?.visibility = View.GONE
+            binding.cardSummary?.visibility = View.GONE
+        } else {
+            big.visibility = View.GONE
+            binding.cardTranscript?.visibility = View.VISIBLE
+            binding.cardSummary?.visibility = View.VISIBLE
+        }
     }
 
     private fun startTimer() {
@@ -693,6 +721,55 @@ class CallActivity : AppCompatActivity() {
         cancelPeriodicSummary()
         LinphoneManager.onCallStateChanged = null
         cancelIncomingNotification()
+    }
+
+    /**
+     * A fresh incoming-call intent arrived while this CallActivity instance
+     * already exists (because SipService.startActivity uses SINGLE_TOP).
+     * Behaviour:
+     *  - If the previous call is over (callEnded=true), the Schließen-screen
+     *    is just stale UI — recycle this activity into the new ringing
+     *    state so the user sees who's calling.
+     *  - If a call is still active, ignore the new intent. The heads-up
+     *    notification is still up and will take the user to the new call
+     *    once they hang up. We deliberately don't interrupt an active call
+     *    with a "second incoming" UI.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
+        if (isIncoming && callEnded) {
+            recycleForNewIncoming(intent)
+        }
+    }
+
+    private fun recycleForNewIncoming(intent: Intent) {
+        // Reset the per-call state cleanly. The transcriber + binding stay
+        // alive; we just clear what's specific to the previous call.
+        callEnded = false
+        answered = false
+        recordingStarted = false
+        callStartTime = 0L
+        callSeconds = 0
+        turns.clear()
+        partial = null
+        latestSummaryText = null
+        callRecordId = 0L
+        analyzeInFlight = false
+        lastAnalyzedTurnCount = 0
+        pendingFinalAnalysis = false
+
+        callerName = intent.getStringExtra(EXTRA_REMOTE_ADDRESS) ?: "Unbekannt"
+        callerNumber = intent.getStringExtra(EXTRA_REMOTE_NUMBER) ?: callerName
+        recordFilePath = intent.getStringExtra(EXTRA_RECORD_FILE) ?: ""
+
+        binding.tvCaller.text = callerName
+        binding.tvHistory.text = ""
+        binding.tvDuration.text = "00:00"
+        binding.btnHangUp.visibility = View.VISIBLE
+        binding.btnLoeschen.visibility = View.GONE
+        showIncomingUI()
     }
 
     private var batteryWatcher: BatteryWatcher? = null

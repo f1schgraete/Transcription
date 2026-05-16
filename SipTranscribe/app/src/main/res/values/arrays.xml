@@ -16,4 +16,13 @@
         <item>4</item>
         <item>6</item>
     </string-array>
+    <!--
+        STT provider choices. The matching code-side constants live in
+        MainActivity.STT_PROVIDER_*; the labels here are user-facing so we
+        prefer "Azure" / "Google" (proper nouns) rather than the raw keys.
+    -->
+    <string-array name="stt_providers">
+        <item>Azure</item>
+        <item>Google</item>
+    </string-array>
 </resources>
