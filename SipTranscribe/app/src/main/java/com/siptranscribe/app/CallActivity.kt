@@ -53,6 +53,27 @@ class CallActivity : AppCompatActivity() {
     private var callerNumber = ""
 
     /**
+     * The Linphone Call object this activity is currently tracking.
+     * Set in onCreate / btnAccept / recycleForNewCall and used by the
+     * state listener to ignore stale events from a different call — e.g.
+     * a previous call's `Released` arriving milliseconds after we've
+     * already recycled into a new incoming, which would otherwise call
+     * `endCall()` on the still-fresh new-call activity.
+     */
+    private var activeCall: org.linphone.core.Call? = null
+
+    /**
+     * Monotonic counter bumped every time [recycleForNewCall] flips the
+     * activity over to a new call. Async work that survives across
+     * recycles — most importantly the ConversationAnalyzer thread, which
+     * posts its result back to the main handler when it completes —
+     * captures the current generation at submit time and bails out on
+     * the post if the generation has moved on, so the previous call's
+     * summary can never overwrite the new call's card.
+     */
+    private val callGeneration = java.util.concurrent.atomic.AtomicInteger(0)
+
+    /**
      * Periodic summary state. While the call is active a timer fires every
      * [SUMMARY_INTERVAL_MS]; each tick re-runs ConversationAnalyzer over the
      * transcript so far and quietly replaces tv_summary's text. The in-flight
@@ -164,7 +185,9 @@ class CallActivity : AppCompatActivity() {
         // launch via the notification's full-screen intent — the user
         // ended up with one red entry from the bogus early-end and one
         // green entry from the real call they actually answered.
-        val cs = LinphoneManager.getCurrentCall()?.state
+        val currentCall = LinphoneManager.getCurrentCall()
+        if (activeCall == null) activeCall = currentCall
+        val cs = currentCall?.state
         if (cs == Call.State.End || cs == Call.State.Released || cs == Call.State.Error) {
             endCall()
         }
@@ -195,6 +218,7 @@ class CallActivity : AppCompatActivity() {
                 // before acceptWithParams is called.
                 recordFilePath = "${filesDir.absolutePath}/call_${System.currentTimeMillis()}.wav"
                 LinphoneManager.acceptCall(call, recordFilePath)
+                activeCall = call
             }
             answered = true
             callStartTime = System.currentTimeMillis()
@@ -232,7 +256,16 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun setupCallListener() {
-        LinphoneManager.onCallStateChanged = { _, state ->
+        LinphoneManager.onCallStateChanged = lambda@ { call, state ->
+            // Adopt the call on the first event if we don't have one yet
+            // (covers outgoing calls that started slightly before we got
+            // into onCreate). Once we have an `activeCall`, anything from
+            // a different Call object is a stale event from a previous
+            // call and must be ignored, otherwise its terminal states
+            // (End / Released) would re-trigger endCall() on a call we
+            // are currently in the middle of presenting.
+            if (activeCall == null) activeCall = call
+            if (call !== activeCall) return@lambda
             runOnUiThread {
                 when (state) {
                     Call.State.OutgoingRinging -> binding.tvStatus.text = "Klingelt..."
@@ -466,11 +499,18 @@ class CallActivity : AppCompatActivity() {
         analyzeInFlight = true
         lastAnalyzedTurnCount = turns.size
 
+        // Snapshot the call generation at submit time. If the activity is
+        // recycled to a new call before this thread posts back, the
+        // generation check on the main thread drops the stale result so
+        // it can never overwrite the new call's summary card.
+        val gen = callGeneration.get()
+
         Thread({
             try {
                 val result = ConversationAnalyzer(endpoint, key, deployment, prompt)
                     .analyze(text)
                 handler.post {
+                    if (gen != callGeneration.get()) return@post
                     analyzeInFlight = false
                     showAnalysis(result)
                     if (pendingFinalAnalysis) {
@@ -481,6 +521,7 @@ class CallActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e(TAG, "Analysis failed", e)
                 handler.post {
+                    if (gen != callGeneration.get()) return@post
                     analyzeInFlight = false
                     if (pendingFinalAnalysis) {
                         pendingFinalAnalysis = false
@@ -724,29 +765,38 @@ class CallActivity : AppCompatActivity() {
     }
 
     /**
-     * A fresh incoming-call intent arrived while this CallActivity instance
-     * already exists (because SipService.startActivity uses SINGLE_TOP).
-     * Behaviour:
-     *  - If the previous call is over (callEnded=true), the Schließen-screen
-     *    is just stale UI — recycle this activity into the new ringing
-     *    state so the user sees who's calling.
-     *  - If a call is still active, ignore the new intent. The heads-up
-     *    notification is still up and will take the user to the new call
-     *    once they hang up. We deliberately don't interrupt an active call
-     *    with a "second incoming" UI.
+     * Fresh call intent arrived while this CallActivity instance already
+     * exists (SipService uses SINGLE_TOP + the activity is launchMode
+     * singleTop in the manifest, so the intent lands here instead of
+     * making a duplicate instance). Behaviour:
+     *  - If the previous call is over (callEnded=true), recycle this
+     *    activity into the new call's UI. Without this the user is
+     *    stuck on the Schließen screen and the new caller's name never
+     *    appears — they see the heads-up notification but in-app
+     *    nothing changes.
+     *  - If a call is still active, ignore. The heads-up notification
+     *    stays up and takes the user to the new call after they hang
+     *    up; we deliberately don't interrupt an active conversation.
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
-        if (isIncoming && callEnded) {
-            recycleForNewIncoming(intent)
-        }
+        if (!callEnded) return
+        recycleForNewCall(intent)
     }
 
-    private fun recycleForNewIncoming(intent: Intent) {
-        // Reset the per-call state cleanly. The transcriber + binding stay
-        // alive; we just clear what's specific to the previous call.
+    /**
+     * Reset every piece of per-call UI/state so the activity behaves as
+     * if it had been freshly created for this new call. Covers both
+     * incoming (from SipService) and outgoing (from MainActivity.makeCall)
+     * intents; `EXTRA_IS_INCOMING` picks which ringing-UI to show.
+     */
+    private fun recycleForNewCall(intent: Intent) {
+        // Bump generation FIRST so any in-flight analyser threads that are
+        // about to post back on the main handler see a stale gen and bail.
+        callGeneration.incrementAndGet()
+
+        // Per-call flags + buffers
         callEnded = false
         answered = false
         recordingStarted = false
@@ -754,22 +804,52 @@ class CallActivity : AppCompatActivity() {
         callSeconds = 0
         turns.clear()
         partial = null
+        speakerColorMap.clear()
+        speakerColorMap[TranscriptionManager.LABEL_LOCAL]  = 0
+        speakerColorMap[TranscriptionManager.LABEL_REMOTE] = 1
+        summaryStatus = null
+        summaryBlock = null
         latestSummaryText = null
         callRecordId = 0L
         analyzeInFlight = false
         lastAnalyzedTurnCount = 0
         pendingFinalAnalysis = false
+        speakerOn = false
 
+        // Clear any pending main-thread runnables from the old call
+        // (e.g. the Error→finish() postDelayed, or the analyser hand-off)
+        // so they can't fire on the recycled UI.
+        stopTimer()
+        cancelPeriodicSummary()
+        handler.removeCallbacksAndMessages(null)
+
+        // The TranscriptionManager owns recorders and a network engine
+        // whose threads were torn down on the previous endCall(). Build a
+        // fresh one for the new call and re-wire its callbacks.
+        try { transcriber.stop() } catch (_: Exception) {}
+        transcriber = TranscriptionManager(this)
+        setupTranscriber()
+
+        // Adopt whichever call Linphone is now bound to so the state
+        // listener filter routes events to this recycled instance.
+        activeCall = LinphoneManager.getCurrentCall()
+
+        // Refresh caller info from the new intent.
         callerName = intent.getStringExtra(EXTRA_REMOTE_ADDRESS) ?: "Unbekannt"
         callerNumber = intent.getStringExtra(EXTRA_REMOTE_NUMBER) ?: callerName
         recordFilePath = intent.getStringExtra(EXTRA_RECORD_FILE) ?: ""
 
+        // Visible widgets back to their fresh-call state.
         binding.tvCaller.text = callerName
         binding.tvHistory.text = ""
         binding.tvDuration.text = "00:00"
+        binding.tvSummary?.text = "Zusammenfassung erscheint, sobald genug gesprochen wurde."
         binding.btnHangUp.visibility = View.VISIBLE
         binding.btnLoeschen.visibility = View.GONE
-        showIncomingUI()
+        applySpeakerButtonStyle()
+
+        val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
+        if (isIncoming) showIncomingUI() else showCallingUI()
     }
 
     private var batteryWatcher: BatteryWatcher? = null
