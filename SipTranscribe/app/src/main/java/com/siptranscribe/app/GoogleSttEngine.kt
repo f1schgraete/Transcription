@@ -5,12 +5,15 @@ import com.google.api.gax.core.NoCredentialsProvider
 import com.google.api.gax.grpc.InstantiatingGrpcChannelProvider
 import com.google.api.gax.rpc.ApiStreamObserver
 import com.google.api.gax.rpc.BidiStreamingCallable
-import com.google.cloud.speech.v1.RecognitionConfig
-import com.google.cloud.speech.v1.SpeechClient
-import com.google.cloud.speech.v1.SpeechSettings
-import com.google.cloud.speech.v1.StreamingRecognitionConfig
-import com.google.cloud.speech.v1.StreamingRecognizeRequest
-import com.google.cloud.speech.v1.StreamingRecognizeResponse
+import com.google.cloud.speech.v2.ExplicitDecodingConfig
+import com.google.cloud.speech.v2.RecognitionConfig
+import com.google.cloud.speech.v2.RecognitionFeatures
+import com.google.cloud.speech.v2.SpeechClient
+import com.google.cloud.speech.v2.SpeechSettings
+import com.google.cloud.speech.v2.StreamingRecognitionConfig
+import com.google.cloud.speech.v2.StreamingRecognitionFeatures
+import com.google.cloud.speech.v2.StreamingRecognizeRequest
+import com.google.cloud.speech.v2.StreamingRecognizeResponse
 import com.google.protobuf.ByteString
 import io.grpc.CallOptions
 import io.grpc.Channel
@@ -24,33 +27,47 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Streaming Google Cloud Speech-to-Text implementation.
+ * Streaming Google Cloud Speech-to-Text v2 implementation.
+ *
+ * v2 over v1: the original v1 streaming endpoint silently ignores
+ * `enable_separate_recognition_per_channel`, so stereo streams were
+ * folded and emitted late. v2's `RecognitionFeatures.multi_channel_mode`
+ * = `SEPARATE_RECOGNITION_PER_CHANNEL` is honoured by the streaming
+ * call, so we can send **one** stereo PCM stream (L = remote, R =
+ * local — produced by [StereoMerger]) and Google returns interim +
+ * final results tagged with `channelTag` 1 / 2 for each side. One
+ * gRPC connection, one configuration message, results per channel.
  *
  * Pipeline:
- *  1. [prepare] builds a [SpeechClient] using gRPC over OkHttp (the
- *     Android-friendly transport) and authenticates by attaching the
- *     user's API key on every call via `x-goog-api-key` metadata. No
- *     service-account JSON file is required.
+ *  1. [prepare] builds a v2 [SpeechClient] over grpc-okhttp (the
+ *     Android-friendly gRPC transport). Auth is via the user's API
+ *     key, attached as `x-goog-api-key` metadata on every call; no
+ *     service-account JSON is needed.
  *  2. A worker thread opens a `StreamingRecognize` bidi stream, sends
- *     the [StreamingRecognitionConfig] (LINEAR16, stereo, per-channel
- *     recognition, `telephony` model — Google's narrowband-phone-call
- *     model), and then pulls audio chunks off the [pcmQueue] and pushes
- *     them as `StreamingRecognizeRequest` messages.
- *  3. The response observer forwards [StreamingRecognizeResponse]s back
- *     through [onResult]. The result's `channelTag` (1-based) is passed
- *     to the caller as the `speakerId` argument so
- *     [TranscriptionManager] can map it to "Anrufer" / "Ich".
- *  4. Google's streams time out after roughly five minutes. The worker
- *     transparently re-opens a fresh stream whenever the previous one
- *     closes while the caller hasn't asked us to stop, so longer calls
- *     keep transcribing with at most a short pause between streams.
+ *     the first request containing the recognizer name and the
+ *     [StreamingRecognitionConfig] (LINEAR16, 2 channels, `telephony`
+ *     model, multi-channel = SEPARATE_RECOGNITION_PER_CHANNEL,
+ *     `interim_results` on), then pulls audio chunks off [pcmQueue]
+ *     and pushes them as `audio` payloads.
+ *  3. The response observer forwards each result through [onResult]
+ *     with the `channelTag` (as a string) as the speakerId argument.
+ *     [TranscriptionManager] maps "1" → "Anrufer" and "2" → "Ich".
+ *  4. Google's streams cap at roughly five minutes; the worker
+ *     transparently re-opens a fresh stream when the previous one
+ *     closes while the caller hasn't asked us to stop.
  *
- * Audio expectations: the merger in [StereoMerger] hands us interleaved
- * stereo PCM (L = remote, R = local). We forward those raw bytes; we
- * never re-arrange channels.
+ * **Required setup**: the recognizer field of every v2 streaming
+ * request must be a path of the form
+ * `projects/<PROJECT_ID>/locations/global/recognizers/_`. The trailing
+ * underscore is the "ad-hoc" recognizer that just uses the inline
+ * config we send, so no recognizer resource needs to be created on
+ * the Google side — but the **project id** is unavoidable and has to
+ * come from the user's Google Cloud project (Settings →
+ * "Google Cloud Projekt-ID" field).
  */
 class GoogleSttEngine(
     private val apiKey: String,
+    private val projectId: String,
     private val languageCode: String
 ) : SttEngine {
 
@@ -71,22 +88,22 @@ class GoogleSttEngine(
             onError?.invoke("Google STT: API-Schlüssel fehlt")
             return
         }
+        if (projectId.isBlank()) {
+            onError?.invoke("Google STT: Projekt-ID fehlt")
+            return
+        }
         if (senderThread != null) {
-            // Already running; just remember the new rate if the recorder
-            // re-reports it (it shouldn't change mid-call).
             this.sampleRate = sampleRate
             return
         }
         this.sampleRate = sampleRate
         stopRequested.set(false)
-
         senderThread = Thread({ runStreamingLoop() }, "GoogleSttEngine-sender").also { it.start() }
     }
 
     override fun feed(pcm: ByteArray, length: Int) {
         if (length <= 0) return
         if (stopRequested.get()) return
-        // The merger reuses its output buffer, so copy here.
         val chunk = if (length == pcm.size) pcm.copyOf() else pcm.copyOf(length)
         pcmQueue.offer(chunk)
     }
@@ -101,13 +118,6 @@ class GoogleSttEngine(
         pcmQueue.clear()
     }
 
-    /**
-     * Run streams back-to-back until [stop] is called. Each iteration opens
-     * a fresh bidi stream, drains the queue into it until either the queue
-     * sends a stop signal or the server closes (5-minute limit), then
-     * loops to open the next one. This means a long call keeps producing
-     * results with at most a brief gap at the rollover.
-     */
     private fun runStreamingLoop() {
         try {
             client = buildClient()
@@ -118,6 +128,7 @@ class GoogleSttEngine(
         }
         val callable: BidiStreamingCallable<StreamingRecognizeRequest, StreamingRecognizeResponse> =
             client!!.streamingRecognizeCallable()
+        val recognizer = "projects/$projectId/locations/global/recognizers/_"
 
         while (!stopRequested.get()) {
             val streamClosed = AtomicBoolean(false)
@@ -131,29 +142,26 @@ class GoogleSttEngine(
             }
 
             try {
-                request.onNext(buildConfigRequest())
+                request.onNext(buildConfigRequest(recognizer))
             } catch (e: Exception) {
                 Log.e(TAG, "Sending config failed", e)
                 onError?.invoke("Google STT config: ${e.message}")
                 return
             }
 
-            // Drain audio chunks until the server closes or we get the stop
-            // sentinel. poll with a timeout so we notice server-side
-            // closures and the stop flag in a timely manner.
             while (!stopRequested.get() && !streamClosed.get()) {
                 val chunk = try {
                     pcmQueue.poll(200, TimeUnit.MILLISECONDS)
                 } catch (e: InterruptedException) {
                     null
                 } ?: continue
-                if (chunk === stopSignal) {
-                    break
-                }
+                if (chunk === stopSignal) break
                 try {
+                    // v2 streaming uses `audio` (raw bytes), not `audio_content`.
                     request.onNext(
                         StreamingRecognizeRequest.newBuilder()
-                            .setAudioContent(ByteString.copyFrom(chunk))
+                            .setRecognizer(recognizer)
+                            .setAudio(ByteString.copyFrom(chunk))
                             .build()
                     )
                 } catch (e: Exception) {
@@ -163,8 +171,6 @@ class GoogleSttEngine(
             }
 
             try { request.onCompleted() } catch (_: Exception) {}
-            // Brief breather before reopening so we don't tight-loop on
-            // repeated immediate errors (e.g. auth failure).
             if (!stopRequested.get()) {
                 try { Thread.sleep(200) } catch (_: InterruptedException) {}
             }
@@ -184,25 +190,39 @@ class GoogleSttEngine(
         return SpeechClient.create(settings)
     }
 
-    private fun buildConfigRequest(): StreamingRecognizeRequest {
-        // `telephony` is the phone-optimised narrowband model. It works
-        // equally well at 8 kHz (G.711) and 16 kHz (G.722/wideband phone),
-        // which covers every codec Linphone can negotiate for us.
-        val config = RecognitionConfig.newBuilder()
-            .setEncoding(RecognitionConfig.AudioEncoding.LINEAR16)
+    private fun buildConfigRequest(recognizer: String): StreamingRecognizeRequest {
+        // `telephony` is the phone-optimised narrowband model in v2.
+        // Works at both 8 kHz (G.711) and 16 kHz (G.722/wideband), which
+        // covers every codec Linphone can negotiate for us.
+        val decoding = ExplicitDecodingConfig.newBuilder()
+            .setEncoding(ExplicitDecodingConfig.AudioEncoding.LINEAR16)
             .setSampleRateHertz(sampleRate)
-            .setLanguageCode(languageCode)
             .setAudioChannelCount(2)
-            .setEnableSeparateRecognitionPerChannel(true)
-            .setModel("telephony")
-            .setUseEnhanced(true)
             .build()
-        val streaming = StreamingRecognitionConfig.newBuilder()
-            .setConfig(config)
+        val features = RecognitionFeatures.newBuilder()
+            // The whole reason we're on v2: this flag actually streams.
+            // v1 streaming silently ignores its equivalent.
+            .setMultiChannelMode(
+                RecognitionFeatures.MultiChannelMode.SEPARATE_RECOGNITION_PER_CHANNEL
+            )
+            .setEnableAutomaticPunctuation(true)
+            .build()
+        val config = RecognitionConfig.newBuilder()
+            .setExplicitDecodingConfig(decoding)
+            .addLanguageCodes(languageCode)
+            .setModel("telephony")
+            .setFeatures(features)
+            .build()
+        val streamingFeatures = StreamingRecognitionFeatures.newBuilder()
             .setInterimResults(true)
             .build()
+        val streamingConfig = StreamingRecognitionConfig.newBuilder()
+            .setConfig(config)
+            .setStreamingFeatures(streamingFeatures)
+            .build()
         return StreamingRecognizeRequest.newBuilder()
-            .setStreamingConfig(streaming)
+            .setRecognizer(recognizer)
+            .setStreamingConfig(streamingConfig)
             .build()
     }
 
@@ -215,10 +235,10 @@ class GoogleSttEngine(
                     val alt = result.alternativesList.firstOrNull() ?: continue
                     val text = alt.transcript ?: continue
                     if (text.isBlank()) continue
-                    // channelTag is 1-based; we pass it as a string so
-                    // TranscriptionManager can map it via the same path
-                    // used for Azure's speaker IDs.
+                    // channelTag is 1-based. StereoMerger writes L = remote
+                    // (channelTag = 1) and R = local (channelTag = 2).
                     val tag = result.channelTag.toString()
+                    Log.d(TAG, "result: ch=$tag final=${result.isFinal} text=\"$text\"")
                     onResult?.invoke(text, result.isFinal, tag)
                 }
             }
@@ -235,9 +255,9 @@ class GoogleSttEngine(
     }
 
     /**
-     * Adds `x-goog-api-key: <key>` to every gRPC call. The Speech v1
-     * service accepts API-key auth for both unary and streaming requests
-     * this way, no service-account JSON needed.
+     * Adds `x-goog-api-key: <key>` to every gRPC call. The Speech v2
+     * service accepts API-key auth this way, no service-account JSON
+     * needed.
      */
     private class ApiKeyInterceptor(private val apiKey: String) : ClientInterceptor {
         override fun <ReqT, RespT> interceptCall(

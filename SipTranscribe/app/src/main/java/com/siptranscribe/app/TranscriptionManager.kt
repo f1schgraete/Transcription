@@ -71,6 +71,7 @@ class TranscriptionManager(private val context: Context) {
         val prefs = context.getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
         return GoogleSttEngine(
             apiKey = prefs.getString(MainActivity.KEY_GOOGLE_STT_KEY, "") ?: "",
+            projectId = prefs.getString(MainActivity.KEY_GOOGLE_STT_PROJECT, "") ?: "",
             languageCode = prefs.getString(
                 MainActivity.KEY_GOOGLE_STT_LANGUAGE,
                 MainActivity.DEFAULT_GOOGLE_STT_LANGUAGE

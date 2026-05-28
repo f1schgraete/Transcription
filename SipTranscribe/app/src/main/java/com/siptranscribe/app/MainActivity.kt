@@ -99,6 +99,12 @@ class MainActivity : AppCompatActivity() {
         const val KEY_STT_PROVIDER = "stt_provider"
         const val KEY_GOOGLE_STT_KEY = "google_stt_key"
         const val KEY_GOOGLE_STT_LANGUAGE = "google_stt_language"
+        /** Google Cloud project ID. The Speech-to-Text v2 streaming API
+         *  requires every request to address a "recognizer" resource:
+         *  `projects/<id>/locations/global/recognizers/_`. The trailing
+         *  `_` means "use the inline config" so no recognizer resource
+         *  has to be pre-created — but the project id is unavoidable. */
+        const val KEY_GOOGLE_STT_PROJECT = "google_stt_project"
         const val STT_PROVIDER_AZURE = "azure"
         const val STT_PROVIDER_GOOGLE = "google"
         const val DEFAULT_GOOGLE_STT_LANGUAGE = "de-DE"
@@ -1006,6 +1012,7 @@ class MainActivity : AppCompatActivity() {
         binding.etGoogleSttLanguage?.setText(
             prefs.getString(KEY_GOOGLE_STT_LANGUAGE, DEFAULT_GOOGLE_STT_LANGUAGE)
         )
+        binding.etGoogleSttProject?.setText(prefs.getString(KEY_GOOGLE_STT_PROJECT, ""))
         binding.etSummaryPrompt.setText(
             prefs.getString(KEY_SUMMARY_PROMPT, ConversationAnalyzer.DEFAULT_SYSTEM_PROMPT)
         )
@@ -1081,6 +1088,9 @@ class MainActivity : AppCompatActivity() {
             binding.etGoogleSttLanguage?.let {
                 val lang = it.text.toString().trim().ifEmpty { DEFAULT_GOOGLE_STT_LANGUAGE }
                 putString(KEY_GOOGLE_STT_LANGUAGE, lang)
+            }
+            binding.etGoogleSttProject?.let {
+                putString(KEY_GOOGLE_STT_PROJECT, it.text.toString().trim())
             }
             putString(KEY_SUMMARY_PROMPT, binding.etSummaryPrompt.text.toString())
             // Allow blank or invalid input to fall back to the default rather
