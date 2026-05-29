@@ -298,6 +298,20 @@
                                     android:textSize="16sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Zuh&#xF6;ren: Stopp nach Stille (Minuten)"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_listen_timeout"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="number"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
                             <!--
                                 STT provider switcher. Azure uses the existing
                                 two-mono-streams flow; Google uses one stereo

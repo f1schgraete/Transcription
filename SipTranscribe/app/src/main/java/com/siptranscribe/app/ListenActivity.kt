@@ -45,6 +45,23 @@ class ListenActivity : AppCompatActivity() {
     private var summaryShown = false
     private var summaryInFlight = false
 
+    /**
+     * Idle (no-speech) auto-stop. The duration is read from settings at
+     * start; the timer is re-armed on every recognised result, so it only
+     * fires after a genuine stretch of silence — at which point we stop the
+     * mic + engine so a forgotten or idle session can't keep streaming
+     * silence to Azure and run up cost.
+     */
+    private var idleTimeoutMs = 0L
+    private val idleRunnable = Runnable { onIdleTimeout() }
+
+    /**
+     * Wall-clock time we were last sent to the background (onStop). Compared
+     * against [CallActivity.lastAnsweredAtMs] on return so we can tell whether
+     * an interrupting call was actually answered.
+     */
+    private var backgroundedAt = 0L
+
     private var batteryWatcher: BatteryWatcher? = null
 
     private data class Turn(val speakerId: String, val text: String)
@@ -133,6 +150,8 @@ class ListenActivity : AppCompatActivity() {
                     partial = if (text.isNotBlank()) Turn(sid, text) else null
                 }
                 renderTranscript()
+                // Speech arrived — push the idle auto-stop back.
+                armIdleTimer()
             }
         }
         eng.onError = { msg ->
@@ -162,16 +181,39 @@ class ListenActivity : AppCompatActivity() {
         recorder.start()
         mic = recorder
 
+        idleTimeoutMs = prefs.getInt(
+            MainActivity.KEY_LISTEN_TIMEOUT_MINUTES,
+            MainActivity.DEFAULT_LISTEN_TIMEOUT_MINUTES
+        ).coerceAtLeast(MainActivity.MIN_LISTEN_TIMEOUT_MINUTES) * 60_000L
+
         listening = true
         binding.tvStatus.text = "Höre zu …"
         binding.btnStop.visibility = View.VISIBLE
         binding.btnSummary.visibility = View.GONE
         binding.btnClose.visibility = View.GONE
+        armIdleTimer()
+    }
+
+    private fun armIdleTimer() {
+        // Guard against a late result posted after we've already stopped
+        // re-arming the timer.
+        if (!listening || idleTimeoutMs <= 0L) return
+        handler.removeCallbacks(idleRunnable)
+        handler.postDelayed(idleRunnable, idleTimeoutMs)
+    }
+
+    private fun onIdleTimeout() {
+        if (!listening) return
+        val mins = (idleTimeoutMs / 60_000L).toInt()
+        DiagLog.log(this, "Zuhören automatisch beendet ($mins min Stille)")
+        stopListening()
+        binding.tvStatus.text = "Automatisch beendet ($mins min Stille)"
     }
 
     private fun stopListening() {
         if (!listening) return
         listening = false
+        handler.removeCallbacks(idleRunnable)
         try { mic?.stop() } catch (_: Exception) {}
         try { engine?.stop() } catch (_: Exception) {}
         mic = null
@@ -328,6 +370,40 @@ class ListenActivity : AppCompatActivity() {
         super.onPause()
         batteryWatcher?.stop()
         batteryWatcher = null
+    }
+
+    /**
+     * The moment Zuhören is no longer the foreground screen we must let go of
+     * the microphone. The most important case is an incoming call: SipService
+     * force-launches CallActivity on top of us, and if we kept the mic open
+     * the accepted call would have no uplink audio (two AudioRecord clients
+     * can't share the mic). Releasing here means the call "just works" and the
+     * user can answer it; when they come back afterwards Zuhören is already in
+     * its stopped state, so a single tap on "Schließen" closes it.
+     *
+     * stopListening() is guarded by [listening], so the normal finish() path
+     * (where the user already tapped "Zuhören beenden") is a no-op here.
+     */
+    override fun onStop() {
+        super.onStop()
+        backgroundedAt = System.currentTimeMillis()
+        stopListening()
+    }
+
+    /**
+     * Coming back to the foreground after having been stopped. If a call was
+     * actually answered while we were away (most commonly: a call came in
+     * during listening and the user took it), the user has moved on — close
+     * Zuhören so they land back on the main screen instead of on the stale
+     * "Beendet" transcript. A missed or declined call doesn't set
+     * [CallActivity.lastAnsweredAtMs], so in that case we stay and let the
+     * user read what was captured / tap Schließen themselves.
+     */
+    override fun onRestart() {
+        super.onRestart()
+        if (CallActivity.lastAnsweredAtMs > backgroundedAt) {
+            finish()
+        }
     }
 
     override fun onDestroy() {

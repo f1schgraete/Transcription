@@ -125,6 +125,18 @@ class CallActivity : AppCompatActivity() {
         private const val UNKNOWN_SPEAKER_BG = 0xFFEEEEEE.toInt()
 
         private const val MIN_CHARS_FOR_SUMMARY = 80
+
+        /**
+         * Wall-clock time the most recent call became active (answered /
+         * streams running). ListenActivity reads this to decide what to do
+         * when a call interrupted a "Zuhören" session: if a call was actually
+         * taken while Zuhören was in the background, there's no point dropping
+         * the user back on the stale "Beendet" screen afterwards — Zuhören
+         * dismisses itself so they land back on the main screen. A missed or
+         * declined call never sets this, so in that case Zuhören is preserved.
+         */
+        @Volatile
+        var lastAnsweredAtMs: Long = 0L
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -724,6 +736,10 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun showActiveUI() {
+        // Mark that a call was actually taken (any path into the active UI:
+        // accept, Connected, StreamsRunning). ListenActivity uses this to
+        // decide whether to dismiss itself after interrupting a Zuhören session.
+        lastAnsweredAtMs = System.currentTimeMillis()
         if (binding.layoutActive.visibility == View.VISIBLE) return
         binding.layoutCalling.visibility = View.GONE
         binding.layoutIncoming.visibility = View.GONE

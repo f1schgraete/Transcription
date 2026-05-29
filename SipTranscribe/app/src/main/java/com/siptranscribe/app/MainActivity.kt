@@ -86,6 +86,10 @@ class MainActivity : AppCompatActivity() {
         const val KEY_SUMMARY_PROMPT = "summary_prompt"
         const val KEY_USE_SRV = "use_dns_srv"
         const val KEY_SUMMARY_INTERVAL = "summary_interval_seconds"
+        /** Auto-stop the "Zuhören" mic session after this many minutes with no
+         *  recognised speech, so a forgotten/idle session can't stream silence
+         *  to Azure forever and rack up cost. */
+        const val KEY_LISTEN_TIMEOUT_MINUTES = "listen_timeout_minutes"
 
         /**
          * STT provider choice and credentials.
@@ -127,6 +131,9 @@ class MainActivity : AppCompatActivity() {
          *  keeps us from hammering Azure on a misconfigured value. */
         const val DEFAULT_SUMMARY_INTERVAL_SECONDS = 25
         const val MIN_SUMMARY_INTERVAL_SECONDS = 5
+        /** Zuhören idle-stop default / floor, in minutes. */
+        const val DEFAULT_LISTEN_TIMEOUT_MINUTES = 5
+        const val MIN_LISTEN_TIMEOUT_MINUTES = 1
 
         // Answering-machine settings. The auto-pickup runtime is intentionally
         // not wired up yet — these keys just persist what the caregiver
@@ -663,6 +670,10 @@ class MainActivity : AppCompatActivity() {
                 ?.toIntOrNull()?.coerceAtLeast(MIN_SUMMARY_INTERVAL_SECONDS)
                 ?: DEFAULT_SUMMARY_INTERVAL_SECONDS
             putInt(KEY_SUMMARY_INTERVAL, interval)
+            val listenTimeout = binding.etListenTimeout.text?.toString()?.trim()
+                ?.toIntOrNull()?.coerceAtLeast(MIN_LISTEN_TIMEOUT_MINUTES)
+                ?: DEFAULT_LISTEN_TIMEOUT_MINUTES
+            putInt(KEY_LISTEN_TIMEOUT_MINUTES, listenTimeout)
             putBoolean(KEY_MAILBOX_ENABLED, binding.cbMailboxEnabled.isChecked)
             val mbTimeout = binding.etMailboxTimeout.text?.toString()?.trim()
                 ?.toIntOrNull()?.coerceAtLeast(5) ?: DEFAULT_MAILBOX_TIMEOUT_SECONDS
@@ -1142,6 +1153,9 @@ class MainActivity : AppCompatActivity() {
         binding.etSummaryInterval.setText(
             prefs.getInt(KEY_SUMMARY_INTERVAL, DEFAULT_SUMMARY_INTERVAL_SECONDS).toString()
         )
+        binding.etListenTimeout.setText(
+            prefs.getInt(KEY_LISTEN_TIMEOUT_MINUTES, DEFAULT_LISTEN_TIMEOUT_MINUTES).toString()
+        )
         binding.cbMailboxEnabled.isChecked =
             prefs.getBoolean(KEY_MAILBOX_ENABLED, false)
         binding.etMailboxTimeout.setText(
@@ -1222,6 +1236,11 @@ class MainActivity : AppCompatActivity() {
             val interval = intervalRaw?.toIntOrNull()?.coerceAtLeast(MIN_SUMMARY_INTERVAL_SECONDS)
                 ?: DEFAULT_SUMMARY_INTERVAL_SECONDS
             putInt(KEY_SUMMARY_INTERVAL, interval)
+            val listenTimeoutRaw = binding.etListenTimeout.text?.toString()?.trim()
+            val listenTimeout = listenTimeoutRaw?.toIntOrNull()
+                ?.coerceAtLeast(MIN_LISTEN_TIMEOUT_MINUTES)
+                ?: DEFAULT_LISTEN_TIMEOUT_MINUTES
+            putInt(KEY_LISTEN_TIMEOUT_MINUTES, listenTimeout)
 
             putBoolean(KEY_MAILBOX_ENABLED, binding.cbMailboxEnabled.isChecked)
             val mbTimeoutRaw = binding.etMailboxTimeout.text?.toString()?.trim()
