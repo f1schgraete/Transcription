@@ -306,6 +306,7 @@ class CallActivity : AppCompatActivity() {
             }
         }
         transcriber.onError = { msg ->
+            DiagLog.log(this, "STT-Fehler: $msg")
             runOnUiThread { binding.tvStatus.text = msg }
         }
     }
@@ -490,6 +491,14 @@ class CallActivity : AppCompatActivity() {
         val deployment = prefs.getString(MainActivity.KEY_AZURE_DEPLOYMENT, "")?.trim().orEmpty()
         if (endpoint.isBlank() || key.isBlank() || deployment.isBlank()) {
             Log.i(TAG, "Skipping analysis: chat deployment not configured")
+            // On the final pass, tell the user *why* there's no summary
+            // instead of leaving the card on its placeholder forever.
+            if (force) {
+                DiagLog.log(this, "Zusammenfassung übersprungen: Azure-Endpunkt/Schlüssel/Chat-Deployment fehlt")
+                if (latestSummaryText == null) {
+                    appendAnalysisStatus("Keine Zusammenfassung: Azure-Chat-Deployment ist nicht konfiguriert (Einstellungen → KI / Zusammenfassung).")
+                }
+            }
             return
         }
         val prompt = prefs.getString(MainActivity.KEY_SUMMARY_PROMPT, null)
@@ -520,16 +529,25 @@ class CallActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Analysis failed", e)
+                // Always record the failure durably so the caregiver can read
+                // it in the Diagnose dialog even when this device blocks
+                // logcat self-reads. e.message carries the HTTP code + body
+                // (e.g. "HTTP 500: …") from ConversationAnalyzer.post().
+                DiagLog.log(this@CallActivity, "Zusammenfassung fehlgeschlagen: ${e.message}")
                 handler.post {
                     if (gen != callGeneration.get()) return@post
                     analyzeInFlight = false
-                    if (pendingFinalAnalysis) {
-                        pendingFinalAnalysis = false
-                        // Only surface errors when the call has ended and we have
-                        // nothing else to fall back to; mid-call periodic errors
-                        // would replace a still-valid earlier summary.
-                        appendAnalysisStatus("Analyse fehlgeschlagen: ${e.message}")
+                    val runFinalNext = pendingFinalAnalysis
+                    pendingFinalAnalysis = false
+                    // Surface the error when this was the final/end-of-call pass
+                    // (force) or the call has already ended — but only if we have
+                    // no good summary on screen to preserve. A transient mid-call
+                    // 500 with an earlier summary still showing is left untouched
+                    // (it was logged above and the next tick will retry).
+                    if ((force || callEnded) && latestSummaryText == null) {
+                        appendAnalysisStatus("Zusammenfassung fehlgeschlagen: ${e.message}")
                     }
+                    if (runFinalNext) tryRunAnalysis(force = true)
                 }
             }
         }, "ConversationAnalyzer").start()
@@ -603,6 +621,7 @@ class CallActivity : AppCompatActivity() {
         // Only matters once the call has ended — periodic mid-call passes don't
         // need to hit disk yet.
         if (callEnded) {
+            DiagLog.log(this, "Zusammenfassung erstellt (Anrufer: ${r.callerName ?: "—"})")
             saveArchive()
             considerContactSuggestion(r)
         }

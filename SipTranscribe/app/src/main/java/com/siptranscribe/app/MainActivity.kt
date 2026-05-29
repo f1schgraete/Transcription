@@ -205,11 +205,20 @@ class MainActivity : AppCompatActivity() {
         // is nullable on the phone-landscape / portrait layouts (only the
         // tablet sw600dp variant has the new section headers) \u2014 wireSection
         // no-ops there so the activity still compiles for both.
+        wireSection(binding.btnSectionSip, binding.layoutSectionSip)
         wireSection(binding.btnSectionDisplay, binding.layoutSectionDisplay)
         wireSection(binding.btnSectionSummary, binding.layoutSectionSummary)
         wireSection(binding.btnSectionMailbox, binding.layoutSectionMailbox)
         wireSection(binding.btnAdvanced, binding.layoutAdvanced)
         wireSection(binding.btnSectionDiag, binding.layoutSectionDiag)
+
+        // The SIP credential section is collapsed by default — it's only
+        // touched once during initial setup. On a fresh install (no username
+        // stored yet) we auto-expand it so the caregiver isn't faced with an
+        // all-collapsed settings card and nowhere obvious to type the login.
+        if (prefs.getString(KEY_USER, "").isNullOrBlank()) {
+            expandSection(binding.btnSectionSip, binding.layoutSectionSip)
+        }
 
         // Transport dropdown
         val transportAdapter = ArrayAdapter(
@@ -247,6 +256,20 @@ class MainActivity : AppCompatActivity() {
             provider.setAdapter(sttAdapter)
             provider.threshold = 0
             provider.setOnClickListener { provider.showDropDown() }
+            // Persist the provider choice the moment it's picked. Previously
+            // this only got written by saveAndRegister() (the "Verbinden"
+            // button), so switching provider while already registered — the
+            // common case when toggling Azure/Google — silently did nothing
+            // unless the caregiver also re-registered SIP. Now it's a normal
+            // instantly-saved setting like the checkboxes below.
+            provider.setOnItemClickListener { _, _, _, _ ->
+                val label = provider.text?.toString().orEmpty()
+                prefs.edit().putString(
+                    KEY_STT_PROVIDER,
+                    if (label.equals("Google", ignoreCase = true)) STT_PROVIDER_GOOGLE
+                    else STT_PROVIDER_AZURE
+                ).apply()
+            }
         }
 
         // Favourite-count dropdown. Selection is applied live so the
@@ -322,6 +345,12 @@ class MainActivity : AppCompatActivity() {
             makeCall(number)
         }
 
+        // "Zuhören" — transcribe the room mic for an in-person conversation.
+        // No SIP call, no registration needed; ListenActivity is self-contained.
+        binding.btnListen.setOnClickListener {
+            startActivity(Intent(this, ListenActivity::class.java))
+        }
+
         // Settings button: toggles card_settings visibility
         binding.btnSettings.setOnClickListener {
             val visible = binding.cardSettings.visibility == View.VISIBLE
@@ -391,6 +420,19 @@ class MainActivity : AppCompatActivity() {
                 .trimEnd()
             button.text = "$base ${if (expand) "▾" else "▸"}"
         }
+    }
+
+    /**
+     * Programmatically expands a collapsible section (used for the initial
+     * auto-expand of the SIP section on a fresh install). Mirrors the
+     * expanded-state bookkeeping in [wireSection]: content VISIBLE and the
+     * header arrow flipped to ▾. No-ops on layouts without the section.
+     */
+    private fun expandSection(button: android.widget.Button?, content: View?) {
+        if (button == null || content == null) return
+        content.visibility = View.VISIBLE
+        val base = button.text.toString().trimEnd().trimEnd('▸', '▾').trimEnd()
+        button.text = "$base ▾"
     }
 
     /** Validates the stored favourite count against [FAVOURITE_COUNT_OPTIONS],
@@ -563,7 +605,71 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        // Safety net so the "everything saves directly" expectation actually
+        // holds: any setting the caregiver edited but didn't confirm with
+        // "Verbinden" is flushed to prefs when we leave the screen (opening a
+        // call, the contact picker, backgrounding the app, etc.). The fields
+        // still hold the values loadSettings() put there, so this is a no-op
+        // when nothing changed. SIP credentials are persisted too, but they
+        // only take effect on the next "Verbinden" (registration) tap.
+        persistSettingsFromUi()
         stopBatteryWatcher()
+    }
+
+    /**
+     * Writes every editable setting from the UI fields into prefs without
+     * touching SIP registration. Shares the same keys as [saveAndRegister];
+     * calling both is idempotent. Guards the tablet-only nullable fields so
+     * it's safe on the phone/portrait layouts too.
+     */
+    private fun persistSettingsFromUi() {
+        prefs.edit().apply {
+            putString(KEY_USER, binding.etUsername.text.toString().trim())
+            putString(KEY_PASS, binding.etPassword.text.toString().trim())
+            putString(KEY_DOMAIN, binding.etDomain.text.toString().trim())
+            putString(KEY_DISPLAY, binding.etDisplayName.text.toString().trim())
+            binding.etPort.text?.toString()?.trim()?.toIntOrNull()?.let { putInt(KEY_PORT, it) }
+            putString(KEY_TRANSPORT, binding.actvTransport.text.toString())
+            binding.etExpires.text?.toString()?.trim()?.toIntOrNull()?.let { putInt(KEY_EXPIRES, it) }
+            putString(KEY_AUTH_USER, binding.etAuthUser.text.toString().trim())
+            putString(KEY_REALM, binding.etRealm.text.toString().trim())
+            putString(KEY_OUTBOUND_PROXY, binding.etOutboundProxy.text.toString().trim())
+            putString(KEY_MEDIA_ENC, binding.actvMediaEnc.text.toString())
+            putBoolean(KEY_USE_SRV, binding.cbUseSrv.isChecked)
+            putBoolean(KEY_TRANSCRIPT_SHOW_LOCAL, binding.cbTranscriptShowLocal.isChecked)
+            putString(KEY_AZURE_ENDPOINT, binding.etAzureEndpoint.text.toString().trim())
+            putString(KEY_AZURE_KEY, binding.etAzureKey.text.toString().trim())
+            putString(KEY_AZURE_DEPLOYMENT, binding.etAzureDeployment.text.toString().trim())
+            val providerLabel = binding.actvSttProvider?.text?.toString().orEmpty()
+            putString(
+                KEY_STT_PROVIDER,
+                if (providerLabel.equals("Google", ignoreCase = true)) STT_PROVIDER_GOOGLE
+                else STT_PROVIDER_AZURE
+            )
+            binding.etGoogleSttKey?.let {
+                putString(KEY_GOOGLE_STT_KEY, it.text.toString().trim())
+            }
+            binding.etGoogleSttLanguage?.let {
+                putString(
+                    KEY_GOOGLE_STT_LANGUAGE,
+                    it.text.toString().trim().ifEmpty { DEFAULT_GOOGLE_STT_LANGUAGE }
+                )
+            }
+            binding.etGoogleSttProject?.let {
+                putString(KEY_GOOGLE_STT_PROJECT, it.text.toString().trim())
+            }
+            putString(KEY_SUMMARY_PROMPT, binding.etSummaryPrompt.text.toString())
+            val interval = binding.etSummaryInterval.text?.toString()?.trim()
+                ?.toIntOrNull()?.coerceAtLeast(MIN_SUMMARY_INTERVAL_SECONDS)
+                ?: DEFAULT_SUMMARY_INTERVAL_SECONDS
+            putInt(KEY_SUMMARY_INTERVAL, interval)
+            putBoolean(KEY_MAILBOX_ENABLED, binding.cbMailboxEnabled.isChecked)
+            val mbTimeout = binding.etMailboxTimeout.text?.toString()?.trim()
+                ?.toIntOrNull()?.coerceAtLeast(5) ?: DEFAULT_MAILBOX_TIMEOUT_SECONDS
+            putInt(KEY_MAILBOX_TIMEOUT_SECONDS, mbTimeout)
+            putString(KEY_MAILBOX_GREETING_TEXT, binding.etMailboxGreeting.text.toString())
+            apply()
+        }
     }
 
     private var batteryWatcher: BatteryWatcher? = null
@@ -936,11 +1042,24 @@ class MainActivity : AppCompatActivity() {
      * it can be pasted into an email/chat for the developer.
      */
     private fun showDiagnosticsDialog() {
-        val log = readRecentLogcat(maxLines = 500)
+        // App-event log first — it's the part that survives even when the
+        // device blocks logcat self-reads (this is where summary/STT
+        // failures such as an Azure HTTP 500 are recorded). The logcat tail
+        // follows for everything else when the device permits it.
+        val appLog = DiagLog.read(this)
+        val logcat = readRecentLogcat(maxLines = 500)
+        val combined = buildString {
+            append("── App-Ereignisse ──\n")
+            append(if (appLog.isBlank()) "(keine)" else appLog)
+            append("\n\n── Logcat ──\n")
+            append(
+                if (logcat.isBlank())
+                    "(nicht verfügbar — dieses Gerät erlaubt Apps nicht, ihr eigenes Logcat zu lesen)"
+                else logcat
+            )
+        }
         val tv = TextView(this).apply {
-            text = if (log.isBlank())
-                "Keine Log-Einträge verfügbar.\n\nManche Geräte erlauben Apps nicht, ihre eigenen Logs zu lesen. Bitte mit adb logcat von einem Computer aus prüfen."
-            else log
+            text = combined
             textSize = 10f
             setPadding(dp(12), dp(8), dp(12), dp(8))
             typeface = android.graphics.Typeface.MONOSPACE
@@ -957,6 +1076,10 @@ class MainActivity : AppCompatActivity() {
                     android.content.ClipData.newPlainText("SipTranscribe diagnostic log", tv.text)
                 )
                 toast("Log in Zwischenablage kopiert")
+            }
+            .setNegativeButton("Leeren") { _, _ ->
+                DiagLog.clear(this)
+                toast("App-Ereignisse geleert")
             }
             .show()
     }

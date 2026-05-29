@@ -725,17 +725,37 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Call button pinned at the bottom -->
-            <Button
-                android:id="@+id/btn_call"
+            <!-- Bottom actions pinned at the bottom -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="60dp"
                 android:layout_marginTop="8dp"
-                android:text="Anrufen"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:backgroundTint="@color/call_green"
-                android:elevation="4dp" />
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_call"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:text="Anrufen"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="@color/call_green"
+                    android:elevation="4dp" />
+
+                <Button
+                    android:id="@+id/btn_listen"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:text="Zuhören"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="@color/accent"
+                    android:elevation="4dp" />
+
+            </LinearLayout>
 
         </LinearLayout>
 

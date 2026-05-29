@@ -43,6 +43,12 @@
             android:windowSoftInputMode="adjustNothing" />
 
         <activity
+            android:name=".ListenActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:windowSoftInputMode="adjustNothing" />
+
+        <activity
             android:name=".ContactSuggestionsActivity"
             android:exported="false"
             android:screenOrientation="landscape"
