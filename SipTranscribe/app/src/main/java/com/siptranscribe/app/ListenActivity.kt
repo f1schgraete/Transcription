@@ -44,6 +44,9 @@ class ListenActivity : AppCompatActivity() {
     private var listening = false
     private var summaryShown = false
     private var summaryInFlight = false
+    /** When the summary feature is disabled in settings, the Zusammenfassung
+     *  button is never offered. Read from prefs at start. */
+    private var summaryEnabled = true
 
     /**
      * Idle (no-speech) auto-stop. The duration is read from settings at
@@ -85,10 +88,10 @@ class ListenActivity : AppCompatActivity() {
          * text stays high-contrast and easy to read on top.
          */
         private val SPEAKER_BG_COLORS = intArrayOf(
-            0xFFFFB74D.toInt(),   // amber/orange — Sprecher 1
-            0xFF64B5F6.toInt(),   // strong sky blue — Sprecher 2
-            0xFF81C784.toInt(),   // green — Sprecher 3
-            0xFFCE93D8.toInt()    // purple — Sprecher 4
+            0xFFFFCC80.toInt(),   // amber/orange (200) — Sprecher 1
+            0xFF90CAF9.toInt(),   // sky blue (200) — Sprecher 2
+            0xFFA5D6A7.toInt(),   // green (200) — Sprecher 3
+            0xFFE1BEE7.toInt()    // purple (200) — Sprecher 4
         )
         private const val UNKNOWN_SPEAKER_BG = 0xFFEEEEEE.toInt()
     }
@@ -130,6 +133,7 @@ class ListenActivity : AppCompatActivity() {
 
     private fun startListening() {
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+        summaryEnabled = prefs.getBoolean(MainActivity.KEY_SUMMARY_ENABLED, false)
         val endpoint = prefs.getString(MainActivity.KEY_AZURE_ENDPOINT, "")?.trim().orEmpty()
         val key = prefs.getString(MainActivity.KEY_AZURE_KEY, "")?.trim().orEmpty()
         if (endpoint.isBlank() || key.isBlank()) {
@@ -227,9 +231,11 @@ class ListenActivity : AppCompatActivity() {
         binding.tvStatus.text = "Beendet"
         binding.btnStop.visibility = View.GONE
         binding.btnClose.visibility = View.VISIBLE
-        // Only offer a summary when there's enough transcript to be worth it.
+        // Only offer a summary when the feature is enabled in settings and
+        // there's enough transcript to be worth it.
         binding.btnSummary.visibility =
-            if (!summaryShown && buildLabeledTranscript().length >= MIN_CHARS_FOR_SUMMARY)
+            if (summaryEnabled && !summaryShown &&
+                buildLabeledTranscript().length >= MIN_CHARS_FOR_SUMMARY)
                 View.VISIBLE else View.GONE
     }
 

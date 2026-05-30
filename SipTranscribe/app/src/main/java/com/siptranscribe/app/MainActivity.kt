@@ -91,6 +91,15 @@ class MainActivity : AppCompatActivity() {
          *  to Azure forever and rack up cost. */
         const val KEY_LISTEN_TIMEOUT_MINUTES = "listen_timeout_minutes"
 
+        /** Whether the LLM summary/analysis feature is on. When OFF (the
+         *  default) no Zusammenfassung is produced for calls or Zuhören, and
+         *  for Azure calls only the caller's leg is transcribed — no second
+         *  cloud recognizer is opened, halving STT cost. The hearing-impaired
+         *  user reads the live transcript, not the summary, so this is off by
+         *  default. */
+        const val KEY_SUMMARY_ENABLED = "summary_enabled"
+        const val DEFAULT_SUMMARY_ENABLED = false
+
         /**
          * STT provider choice and credentials.
          *
@@ -674,6 +683,7 @@ class MainActivity : AppCompatActivity() {
                 ?.toIntOrNull()?.coerceAtLeast(MIN_LISTEN_TIMEOUT_MINUTES)
                 ?: DEFAULT_LISTEN_TIMEOUT_MINUTES
             putInt(KEY_LISTEN_TIMEOUT_MINUTES, listenTimeout)
+            putBoolean(KEY_SUMMARY_ENABLED, binding.cbSummaryEnabled.isChecked)
             putBoolean(KEY_MAILBOX_ENABLED, binding.cbMailboxEnabled.isChecked)
             val mbTimeout = binding.etMailboxTimeout.text?.toString()?.trim()
                 ?.toIntOrNull()?.coerceAtLeast(5) ?: DEFAULT_MAILBOX_TIMEOUT_SECONDS
@@ -1156,6 +1166,8 @@ class MainActivity : AppCompatActivity() {
         binding.etListenTimeout.setText(
             prefs.getInt(KEY_LISTEN_TIMEOUT_MINUTES, DEFAULT_LISTEN_TIMEOUT_MINUTES).toString()
         )
+        binding.cbSummaryEnabled.isChecked =
+            prefs.getBoolean(KEY_SUMMARY_ENABLED, DEFAULT_SUMMARY_ENABLED)
         binding.cbMailboxEnabled.isChecked =
             prefs.getBoolean(KEY_MAILBOX_ENABLED, false)
         binding.etMailboxTimeout.setText(
@@ -1242,6 +1254,7 @@ class MainActivity : AppCompatActivity() {
                 ?: DEFAULT_LISTEN_TIMEOUT_MINUTES
             putInt(KEY_LISTEN_TIMEOUT_MINUTES, listenTimeout)
 
+            putBoolean(KEY_SUMMARY_ENABLED, binding.cbSummaryEnabled.isChecked)
             putBoolean(KEY_MAILBOX_ENABLED, binding.cbMailboxEnabled.isChecked)
             val mbTimeoutRaw = binding.etMailboxTimeout.text?.toString()?.trim()
             val mbTimeout = mbTimeoutRaw?.toIntOrNull()?.coerceAtLeast(5)

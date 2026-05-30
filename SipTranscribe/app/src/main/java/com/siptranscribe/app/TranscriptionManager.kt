@@ -79,17 +79,27 @@ class TranscriptionManager(private val context: Context) {
         )
     }
 
-    fun start(uplinkPath: String, downlinkPath: String, sampleRate: Int) {
-        Log.i(TAG, "start(provider=$provider, ul=$uplinkPath, dl=$downlinkPath, $sampleRate Hz)")
+    /**
+     * @param callerOnly when true, only the remote (caller) leg is transcribed.
+     *   With Azure this skips the uplink recognizer entirely — no second cloud
+     *   connection is opened, halving STT cost — which is what we want when the
+     *   post-call summary is disabled and we only need to show the caller's
+     *   words. Has no cost effect on Google (already a single connection), so
+     *   there it simply drops the local channel from the merged stream.
+     */
+    fun start(uplinkPath: String, downlinkPath: String, sampleRate: Int, callerOnly: Boolean = false) {
+        Log.i(TAG, "start(provider=$provider, ul=$uplinkPath, dl=$downlinkPath, $sampleRate Hz, callerOnly=$callerOnly)")
         if (provider == MainActivity.STT_PROVIDER_GOOGLE) {
-            startGoogle(uplinkPath, downlinkPath, sampleRate)
+            startGoogle(uplinkPath, downlinkPath, sampleRate, callerOnly)
         } else {
-            startAzure(uplinkPath, downlinkPath, sampleRate)
+            startAzure(uplinkPath, downlinkPath, sampleRate, callerOnly)
         }
     }
 
-    private fun startAzure(uplinkPath: String, downlinkPath: String, sampleRate: Int) {
-        wireAzure(ulEngine!!, ulRecorder, uplinkPath,   sampleRate, LABEL_LOCAL)
+    private fun startAzure(uplinkPath: String, downlinkPath: String, sampleRate: Int, callerOnly: Boolean) {
+        if (!callerOnly) {
+            wireAzure(ulEngine!!, ulRecorder, uplinkPath, sampleRate, LABEL_LOCAL)
+        }
         wireAzure(dlEngine!!, dlRecorder, downlinkPath, sampleRate, LABEL_REMOTE)
     }
 
@@ -122,7 +132,12 @@ class TranscriptionManager(private val context: Context) {
         recorder.start(path, sampleRate)
     }
 
-    private fun startGoogle(uplinkPath: String, downlinkPath: String, sampleRate: Int) {
+    private fun startGoogle(uplinkPath: String, downlinkPath: String, sampleRate: Int, callerOnly: Boolean) {
+        // Google already uses a single connection, so there's no cost win from
+        // dropping a leg. We keep both channels wired regardless of callerOnly
+        // (the stereo merger needs both to interleave); the caller's words are
+        // already labelled "Anrufer", so the caller-only consumer can ignore
+        // "Ich" turns if it wants. callerOnly is therefore a no-op here.
         val engine = googleEngine!!
         val merger = stereoMerger!!
 

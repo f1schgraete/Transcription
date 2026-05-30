@@ -46,6 +46,16 @@ class CallActivity : AppCompatActivity() {
 
     private var callEnded = false
     private var speakerOn = false
+    /**
+     * Whether the LLM summary feature is on (read from settings at start).
+     * When off we transcribe only the caller's leg (no second Azure
+     * connection) and never produce a Zusammenfassung; the summary card is
+     * hidden so the transcript fills the screen.
+     */
+    private val summaryEnabled: Boolean by lazy {
+        getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+            .getBoolean(MainActivity.KEY_SUMMARY_ENABLED, MainActivity.DEFAULT_SUMMARY_ENABLED)
+    }
     private var recordingStarted = false
     private var answered = false
     private var callStartTime = 0L
@@ -454,8 +464,10 @@ class CallActivity : AppCompatActivity() {
         // (well before this point). Do NOT re-toggle here — flipping it mid-flow has no
         // effect on a stream whose recorder was already configured in mixed mode.
         LinphoneManager.startCallRecording()
-        transcriber.start(ul, dl, sampleRate)
-        schedulePeriodicSummary()
+        // Summary off → caller-only transcription (skips the second Azure
+        // recognizer) and no periodic analysis.
+        transcriber.start(ul, dl, sampleRate, callerOnly = !summaryEnabled)
+        if (summaryEnabled) schedulePeriodicSummary()
     }
 
     private fun schedulePeriodicSummary() {
@@ -489,6 +501,7 @@ class CallActivity : AppCompatActivity() {
      *     still queues behind any in-flight request via [pendingFinalAnalysis].
      */
     private fun tryRunAnalysis(force: Boolean) {
+        if (!summaryEnabled) return
         if (analyzeInFlight) {
             if (force) pendingFinalAnalysis = true
             return
@@ -768,7 +781,10 @@ class CallActivity : AppCompatActivity() {
         } else {
             big.visibility = View.GONE
             binding.cardTranscript?.visibility = View.VISIBLE
-            binding.cardSummary?.visibility = View.VISIBLE
+            // With the summary disabled the card stays hidden so the
+            // transcript card (weight 2) expands to fill the full width.
+            binding.cardSummary?.visibility =
+                if (summaryEnabled) View.VISIBLE else View.GONE
         }
     }
 

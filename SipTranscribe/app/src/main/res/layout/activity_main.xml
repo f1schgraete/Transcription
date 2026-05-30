@@ -358,6 +358,14 @@
                             android:textSize="13sp"
                             style="@style/Widget.MaterialComponents.Button.TextButton" />
 
+                        <CheckBox
+                            android:id="@+id/cb_summary_enabled"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="Zusammenfassung aktiv (sonst nur Anrufer transkribieren)"
+                            android:textSize="16sp" />
+
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -715,26 +723,26 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/btn_call"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            android:text="Anrufen"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:backgroundTint="@color/call_green"
-            android:elevation="8dp" />
-
-        <Button
             android:id="@+id/btn_listen"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:layout_marginEnd="6dp"
             android:text="Zuhören"
             android:textSize="28sp"
             android:textStyle="bold"
             android:backgroundTint="@color/accent"
+            android:elevation="8dp" />
+
+        <Button
+            android:id="@+id/btn_call"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Anrufen"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:backgroundTint="@color/call_green"
             android:elevation="8dp" />
 
     </LinearLayout>
