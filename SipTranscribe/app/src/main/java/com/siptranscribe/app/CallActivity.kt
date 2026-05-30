@@ -207,11 +207,35 @@ class CallActivity : AppCompatActivity() {
         // launch via the notification's full-screen intent — the user
         // ended up with one red entry from the bogus early-end and one
         // green entry from the real call they actually answered.
+        //
+        // The same race also runs the other way: an *outgoing* call is placed
+        // by MainActivity before CallActivity launches, so the call can already
+        // be Connected/StreamsRunning by the time our listener attaches. Those
+        // state events fired before we were listening and will never be
+        // re-delivered, leaving the activity stuck on the "Verbinde..." ringing
+        // UI with no transcript (beginRecordingAndTranscription only runs from
+        // StreamsRunning). Sync to the current state explicitly so we adopt
+        // whatever the call is already doing. All three handlers are idempotent
+        // (showActiveUI / startTimer / beginRecordingAndTranscription each
+        // guard against double-invocation), so the later live callbacks are
+        // harmless no-ops.
         val currentCall = LinphoneManager.getCurrentCall()
         if (activeCall == null) activeCall = currentCall
-        val cs = currentCall?.state
-        if (cs == Call.State.End || cs == Call.State.Released || cs == Call.State.Error) {
-            endCall()
+        when (currentCall?.state) {
+            Call.State.End, Call.State.Released, Call.State.Error -> endCall()
+            Call.State.Connected -> {
+                showActiveUI()
+                startTimer()
+            }
+            Call.State.StreamsRunning -> {
+                showActiveUI()
+                startTimer()
+                beginRecordingAndTranscription()
+            }
+            else -> {
+                // Still ringing (or null while Linphone wires up an incoming
+                // call) — the live onCallStateChanged listener will drive it.
+            }
         }
     }
 
