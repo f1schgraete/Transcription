@@ -215,10 +215,19 @@ class CallActivity : AppCompatActivity() {
         // re-delivered, leaving the activity stuck on the "Verbinde..." ringing
         // UI with no transcript (beginRecordingAndTranscription only runs from
         // StreamsRunning). Sync to the current state explicitly so we adopt
-        // whatever the call is already doing. All three handlers are idempotent
-        // (showActiveUI / startTimer / beginRecordingAndTranscription each
-        // guard against double-invocation), so the later live callbacks are
-        // harmless no-ops.
+        // whatever the call is already doing.
+        syncToCurrentCallState()
+    }
+
+    /**
+     * Reconcile the UI with the call's *current* state, for events that may
+     * have fired before our [setupCallListener] was wired up (outgoing calls
+     * placed by MainActivity before launch; incoming calls already cancelled).
+     * Safe to call repeatedly: showActiveUI / startTimer /
+     * beginRecordingAndTranscription / endCall are all idempotent, so any
+     * later live onCallStateChanged callbacks are harmless no-ops.
+     */
+    private fun syncToCurrentCallState() {
         val currentCall = LinphoneManager.getCurrentCall()
         if (activeCall == null) activeCall = currentCall
         when (currentCall?.state) {
@@ -925,6 +934,11 @@ class CallActivity : AppCompatActivity() {
 
         val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
         if (isIncoming) showIncomingUI() else showCallingUI()
+
+        // Same pre-listener race as onCreate: the recycled call may already be
+        // active (e.g. an outgoing call dialled before this intent arrived), so
+        // adopt its current state instead of waiting only for future callbacks.
+        syncToCurrentCallState()
     }
 
     private var batteryWatcher: BatteryWatcher? = null

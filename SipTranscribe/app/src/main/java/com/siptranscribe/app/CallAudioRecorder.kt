@@ -54,8 +54,17 @@ class CallAudioRecorder {
 
     fun stop() {
         running = false
-        thread?.interrupt()
+        val t = thread
         thread = null
+        // Join so the read loop has actually exited before we return. Without
+        // this, TranscriptionManager.stop() would null/close the STT push
+        // stream while this thread is still mid-iteration and could call
+        // onPcmData → engine.feed() on a closed stream, and a late recognizer
+        // result could leak into a recycled call's transcript. The loop only
+        // ever blocks on short (≤100 ms) sleeps and a local-file read, and we
+        // interrupt it, so the join returns promptly.
+        t?.interrupt()
+        try { t?.join(500) } catch (_: InterruptedException) {}
         Log.i(TAG, "stopped")
     }
 
