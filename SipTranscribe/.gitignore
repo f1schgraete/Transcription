@@ -1,11 +1,36 @@
+# Built application files
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Gradle
+.gradle/
 build/
 **/build/
-*.apk
+
+# Android build intermediates / outputs
 **/intermediates/
-artifacts
+**/out/
+out/
+bin/
+gen/
+release/
+.cxx/
 obj/
+artifacts
+
+# Local configuration (machine-specific SDK path, signing, etc.)
+local.properties
+
+# Locally-built linphone-sdk AAR lives here (not vendored — see CLAUDE.md)
 libs/
 lib/
-**/out/
-*.hprof
 
+# IDE / OS / logs
+*.iml
+.DS_Store
+*.log
+*.hprof
+captures/
