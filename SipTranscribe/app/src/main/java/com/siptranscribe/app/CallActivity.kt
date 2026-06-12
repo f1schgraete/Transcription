@@ -678,17 +678,13 @@ class CallActivity : AppCompatActivity() {
         // No one waiting (or they gave up): drop any lingering banner.
         hideWaitingCall()
 
-        // Missed-/unanswered-call path: instead of leaving the user on the
-        // call/Auflegen screen (or silently dropping to the home screen), show
-        // the "Verpasste Anrufe" list — the deaf user can't hear a call come
-        // in, so a clear list of who tried to reach her is what's useful.
-        // answered is true only after StreamsRunning fires or the user tapped
-        // Annehmen, so an unanswered incoming call, an outgoing call that was
-        // never picked up, and an incoming call grabbed by another registered
-        // device all land here. saveCallRecord() above has already persisted
-        // this call as not-answered, so it appears in the list.
+        // Unanswered call: return to the home screen. MainActivity's onResume
+        // will detect the new unanswered entry in CallHistory and show the
+        // missed-call banner inline — without launching a separate activity that
+        // would sit on the back stack and re-appear confusingly after the next
+        // call. The golden rule: after *any* call the user always lands on the
+        // familiar home screen.
         if (!answered) {
-            startActivity(Intent(this, MissedCallsActivity::class.java))
             finish()
             return
         }

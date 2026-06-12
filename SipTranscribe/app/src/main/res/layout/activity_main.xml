@@ -44,6 +44,104 @@
 
     </LinearLayout>
 
+    <!-- Missed-call banner (same design as sw600dp, compact for phone) -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/card_missed_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="4dp"
+        android:visibility="gone"
+        app:cardCornerRadius="12dp"
+        app:cardBackgroundColor="@color/missed_banner_bg"
+        app:cardElevation="5dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Verpasster Anruf"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/mic_on" />
+
+                <TextView
+                    android:id="@+id/tv_missed_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
+
+                <TextView
+                    android:id="@+id/tv_missed_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp"
+                    android:textColor="@color/status_neutral" />
+
+                <TextView
+                    android:id="@+id/tv_missed_more"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:textColor="@color/mic_on"
+                    android:paddingTop="2dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/btn_missed_callback"
+                    android:layout_width="wrap_content"
+                    android:layout_height="54dp"
+                    android:minWidth="130dp"
+                    android:text="Zurückrufen"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:backgroundTint="@color/call_green"
+                    android:textColor="@color/text_on_dark"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginBottom="6dp" />
+
+                <Button
+                    android:id="@+id/btn_missed_dismiss"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Schließen"
+                    android:textSize="14sp"
+                    android:backgroundTint="@color/mic_off"
+                    android:textColor="@color/text_on_dark"
+                    android:layout_marginStart="10dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
     <!-- ── Registration status ─────────────────────────────── -->
     <TextView
         android:id="@+id/tv_status"

@@ -84,6 +84,104 @@
 
     </LinearLayout>
 
+    <!--
+        Missed-call banner. Shown when onResume detects unanswered incoming
+        calls. Deliberately placed here, not in a separate activity, so the
+        home screen is always the reliable fallback after any call ends.
+        The name is the biggest element — that's what matters most for a
+        hearing-impaired user who needs to know who to call back.
+    -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/card_missed_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="4dp"
+        android:visibility="gone"
+        app:cardCornerRadius="14dp"
+        app:cardBackgroundColor="@color/missed_banner_bg"
+        app:cardElevation="6dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="14dp">
+
+            <!-- Left: who called and when -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Verpasster Anruf"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/mic_on" />
+
+                <TextView
+                    android:id="@+id/tv_missed_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="40sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:lineSpacingMultiplier="1.1" />
+
+                <TextView
+                    android:id="@+id/tv_missed_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="17sp"
+                    android:textColor="@color/status_neutral" />
+
+                <TextView
+                    android:id="@+id/tv_missed_more"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="15sp"
+                    android:textColor="@color/mic_on"
+                    android:paddingTop="2dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <!-- Right: callback + dismiss -->
+            <Button
+                android:id="@+id/btn_missed_callback"
+                android:layout_width="wrap_content"
+                android:layout_height="68dp"
+                android:minWidth="180dp"
+                android:text="Zurückrufen"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:backgroundTint="@color/call_green"
+                android:textColor="@color/text_on_dark"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="10dp" />
+
+            <Button
+                android:id="@+id/btn_missed_dismiss"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Schließen"
+                android:textSize="16sp"
+                android:backgroundTint="@color/mic_off"
+                android:textColor="@color/text_on_dark" />
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
     <!-- ── Three-column body ──────────────────────────────────── -->
     <LinearLayout
         android:layout_width="match_parent"

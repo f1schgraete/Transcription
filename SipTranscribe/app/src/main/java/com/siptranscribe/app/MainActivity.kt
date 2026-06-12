@@ -672,6 +672,62 @@ class MainActivity : AppCompatActivity() {
             refreshContacts()
         }
         startBatteryWatcher()
+        refreshMissedCallBanner()
+    }
+
+    /**
+     * Shows a prominent banner when there are unanswered *incoming* calls —
+     * the deaf user needs to know who tried to reach her. Only incoming calls
+     * get a banner (she already knows she placed an outgoing call that wasn't
+     * picked up). The most recent caller's name is displayed large; if there
+     * are additional missed calls a count is shown below.
+     *
+     * Tapping "Zurückrufen" dials back via the existing auto-dial path.
+     * Tapping "Schließen" hides the banner for this session (the calls stay
+     * in history; the banner reappears next time the app resumes if there are
+     * still unanswered entries — until she calls back or the banner is cleared).
+     *
+     * Implemented here rather than as a separate activity so the home screen
+     * is always the reliable fallback after any call ends.
+     */
+    private fun refreshMissedCallBanner() {
+        val missed = CallHistory.load(this)
+            .filter { !it.answered && it.direction == CallRecord.Direction.INCOMING }
+        if (missed.isEmpty()) {
+            binding.cardMissedBanner.visibility = android.view.View.GONE
+            return
+        }
+
+        val newest = missed.first()
+        val name = newest.callerName
+            .takeIf { it.isNotBlank() && it != newest.callerNumber }
+            ?: newest.callerNumber.ifBlank { "Unbekannt" }
+
+        val fmt = java.text.SimpleDateFormat("EEE dd.MM. HH:mm", java.util.Locale.GERMAN)
+        binding.tvMissedName.text = name
+        binding.tvMissedTime.text = fmt.format(java.util.Date(newest.startTime))
+
+        if (missed.size > 1) {
+            binding.tvMissedMore.text = "und ${missed.size - 1} weitere verpasste Anrufe"
+            binding.tvMissedMore.visibility = android.view.View.VISIBLE
+        } else {
+            binding.tvMissedMore.visibility = android.view.View.GONE
+        }
+
+        binding.btnMissedCallback.setOnClickListener {
+            val number = newest.callerNumber.ifBlank { name }
+            handleAutoDialIntent(android.content.Intent(this, MainActivity::class.java).apply {
+                putExtra(ContactWidgetProvider.EXTRA_AUTO_DIAL_NUMBER, number)
+                putExtra(ContactWidgetProvider.EXTRA_AUTO_DIAL_NAME, name)
+            })
+            binding.cardMissedBanner.visibility = android.view.View.GONE
+        }
+
+        binding.btnMissedDismiss.setOnClickListener {
+            binding.cardMissedBanner.visibility = android.view.View.GONE
+        }
+
+        binding.cardMissedBanner.visibility = android.view.View.VISIBLE
     }
 
     override fun onPause() {

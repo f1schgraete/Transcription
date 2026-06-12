@@ -25,6 +25,9 @@
     <color name="mic_on">#E65100</color>
     <color name="mic_off">#455A64</color>
 
+    <!-- Missed-call banner -->
+    <color name="missed_banner_bg">#FFF3E0</color>
+
     <!-- Adaptive icon background -->
     <color name="ic_launcher_background">#1565C0</color>
 </resources>
