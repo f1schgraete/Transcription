@@ -52,32 +52,108 @@
 
     </LinearLayout>
 
-    <!-- Transcript -->
-    <androidx.cardview.widget.CardView
+    <!--
+        Transcript area. Normally a single pane (left). In Zuhören's
+        translation mode the right pane becomes visible and the screen splits:
+        left = German, right = the chosen language. The per-pane labels are
+        only shown in translation mode.
+    -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_margin="12dp"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="4dp"
-        app:cardBackgroundColor="@color/surface">
+        android:orientation="horizontal">
 
-        <ScrollView
-            android:id="@+id/scroll_history"
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:padding="16dp">
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tv_history"
+                android:id="@+id/tv_pane_left_label"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="26sp"
-                android:lineSpacingExtra="6dp"
-                android:textColor="@color/text_primary" />
+                android:visibility="gone"
+                android:text="Deutsch"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="@color/text_primary"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp" />
 
-        </ScrollView>
-    </androidx.cardview.widget.CardView>
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_margin="12dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/surface">
+
+                <ScrollView
+                    android:id="@+id/scroll_history"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:id="@+id/tv_history"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="26sp"
+                        android:lineSpacingExtra="6dp"
+                        android:textColor="@color/text_primary" />
+
+                </ScrollView>
+            </androidx.cardview.widget.CardView>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/pane_right"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tv_pane_right_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:textSize="16sp"
+                android:textColor="@color/text_primary"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp" />
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:layout_margin="12dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/surface">
+
+                <ScrollView
+                    android:id="@+id/scroll_history_secondary"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:id="@+id/tv_history_secondary"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="26sp"
+                        android:lineSpacingExtra="6dp"
+                        android:textColor="@color/text_primary" />
+
+                </ScrollView>
+            </androidx.cardview.widget.CardView>
+        </LinearLayout>
+    </LinearLayout>
 
     <!-- Bottom actions -->
     <LinearLayout
@@ -99,6 +175,19 @@
             android:textSize="20sp"
             android:textStyle="bold"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+        <Button
+            android:id="@+id/btn_translate"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            android:visibility="gone"
+            android:text="Übersetzen"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:backgroundTint="@color/call_green"
+            android:elevation="4dp" />
 
         <Button
             android:id="@+id/btn_stop"

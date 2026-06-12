@@ -24,5 +24,6 @@
     <string-array name="stt_providers">
         <item>Azure</item>
         <item>Google</item>
+        <item>Voxtral</item>
     </string-array>
 </resources>

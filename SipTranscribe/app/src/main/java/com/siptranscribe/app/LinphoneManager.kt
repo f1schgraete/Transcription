@@ -15,6 +15,17 @@ object LinphoneManager {
     var onCallStateChanged: ((Call, Call.State) -> Unit)? = null
     var onRegistrationStateChanged: ((Boolean, String) -> Unit)? = null
 
+    /**
+     * The most recent incoming call (set on IncomingReceived, cleared when it
+     * ends). The in-call UI adopts this when recycling to a newly-arrived
+     * call: `core.currentCall` is ambiguous while two calls coexist (e.g. a
+     * second caller rings while the first is still ringing), so we can't rely
+     * on it to identify which call the new CallActivity intent refers to.
+     */
+    @Volatile
+    var latestIncomingCall: Call? = null
+        private set
+
     var isRegistered = false
     private var currentDomain = ""
     private var callMediaEncryption: MediaEncryption = MediaEncryption.SRTP
@@ -71,6 +82,14 @@ object LinphoneManager {
             ) {
                 Log.d(TAG, "Call state: $state - $message")
                 val s = state ?: return
+                // Maintain latestIncomingCall before notifying the UI so the
+                // activity sees the right "newest call" when it reacts.
+                when (s) {
+                    Call.State.IncomingReceived -> latestIncomingCall = call
+                    Call.State.End, Call.State.Released ->
+                        if (call === latestIncomingCall) latestIncomingCall = null
+                    else -> {}
+                }
                 onCallStateChanged?.invoke(call, s)
                 if (s == Call.State.IncomingReceived) {
                     onIncomingCall?.invoke(call)

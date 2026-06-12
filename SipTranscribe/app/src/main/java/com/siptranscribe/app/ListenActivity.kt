@@ -1,6 +1,7 @@
 package com.siptranscribe.app
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
@@ -13,6 +14,7 @@ import android.text.style.ForegroundColorSpan
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.siptranscribe.app.databinding.ActivityListenBinding
@@ -47,6 +49,33 @@ class ListenActivity : AppCompatActivity() {
     /** When the summary feature is disabled in settings, the Zusammenfassung
      *  button is never offered. Read from prefs at start. */
     private var summaryEnabled = true
+
+    /** Whether the "Übersetzen" button is offered (KEY_TRANSLATE_ENABLED). */
+    private var translateEnabled = false
+    /** True once the user picked a language and the screen split into German |
+     *  chosen-language live translation. */
+    private var translateMode = false
+    private var translator: MistralTranslator? = null
+    private var targetLang: TransLang? = null
+    /** German-side turns (left pane) and chosen-language turns (right pane). */
+    private val leftTurns = mutableListOf<Turn>()
+    private val rightTurns = mutableListOf<Turn>()
+
+    /** A translation target: UI label (German), Azure STT code, and the
+     *  English language name used in the Mistral translate prompt. */
+    private data class TransLang(val display: String, val sttCode: String, val englishName: String)
+
+    private val translateLanguages = listOf(
+        TransLang("Englisch", "en-US", "English"),
+        TransLang("Türkisch", "tr-TR", "Turkish"),
+        TransLang("Russisch", "ru-RU", "Russian"),
+        TransLang("Arabisch", "ar-EG", "Arabic"),
+        TransLang("Französisch", "fr-FR", "French"),
+        TransLang("Italienisch", "it-IT", "Italian"),
+        TransLang("Spanisch", "es-ES", "Spanish"),
+        TransLang("Polnisch", "pl-PL", "Polish"),
+        TransLang("Ukrainisch", "uk-UA", "Ukrainian")
+    )
 
     /**
      * Idle (no-speech) auto-stop. The duration is read from settings at
@@ -102,11 +131,13 @@ class ListenActivity : AppCompatActivity() {
 
         binding = ActivityListenBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        enterImmersiveMode()
 
         binding.tvHistory.text = ""
         binding.btnStop.setOnClickListener { stopListening() }
         binding.btnSummary.setOnClickListener { runSummary() }
         binding.btnClose.setOnClickListener { finish() }
+        binding.btnTranslate.setOnClickListener { showLanguagePicker() }
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             == PackageManager.PERMISSION_GRANTED
@@ -134,6 +165,7 @@ class ListenActivity : AppCompatActivity() {
     private fun startListening() {
         val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
         summaryEnabled = prefs.getBoolean(MainActivity.KEY_SUMMARY_ENABLED, false)
+        translateEnabled = prefs.getBoolean(MainActivity.KEY_TRANSLATE_ENABLED, false)
         val endpoint = prefs.getString(MainActivity.KEY_AZURE_ENDPOINT, "")?.trim().orEmpty()
         val key = prefs.getString(MainActivity.KEY_AZURE_KEY, "")?.trim().orEmpty()
         if (endpoint.isBlank() || key.isBlank()) {
@@ -195,6 +227,9 @@ class ListenActivity : AppCompatActivity() {
         binding.btnStop.visibility = View.VISIBLE
         binding.btnSummary.visibility = View.GONE
         binding.btnClose.visibility = View.GONE
+        // Offer translation only if enabled in settings and not already active.
+        binding.btnTranslate.visibility =
+            if (translateEnabled && !translateMode) View.VISIBLE else View.GONE
         armIdleTimer()
     }
 
@@ -223,13 +258,17 @@ class ListenActivity : AppCompatActivity() {
         mic = null
         engine = null
         partial = null
-        renderTranscript()
+        // In translate mode the two panes are driven by leftTurns/rightTurns,
+        // not the normal-mode `turns` list — calling renderTranscript() here
+        // would rebuild the German pane from the (empty) `turns` and wipe it.
+        if (!translateMode) renderTranscript()
         showStoppedUi()
     }
 
     private fun showStoppedUi() {
         binding.tvStatus.text = "Beendet"
         binding.btnStop.visibility = View.GONE
+        binding.btnTranslate.visibility = View.GONE
         binding.btnClose.visibility = View.VISIBLE
         // Only offer a summary when the feature is enabled in settings and
         // there's enough transcript to be worth it.
@@ -354,6 +393,117 @@ class ListenActivity : AppCompatActivity() {
         }
     }
 
+    // ── Übersetzen (translation mode) ──────────────────────────────────────
+
+    private fun showLanguagePicker() {
+        if (translateMode) return
+        val labels = translateLanguages.map { it.display }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("In welche Sprache übersetzen?")
+            .setItems(labels) { _, which -> enterTranslateMode(translateLanguages[which]) }
+            .setNegativeButton("Abbrechen", null)
+            .show()
+    }
+
+    /**
+     * Switch into split-screen translation: restart the STT with German + the
+     * chosen language auto-detected, and translate each finalized turn into the
+     * other language via Mistral. Left pane = German, right pane = chosen.
+     */
+    private fun enterTranslateMode(lang: TransLang) {
+        val prefs = getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
+        val mistralKey = prefs.getString(MainActivity.KEY_VOXTRAL_KEY, "")?.trim().orEmpty()
+        if (mistralKey.isBlank()) {
+            Toast.makeText(this, "Mistral-Schlüssel fehlt (Einstellungen)", Toast.LENGTH_LONG).show()
+            return
+        }
+        val endpoint = prefs.getString(MainActivity.KEY_AZURE_ENDPOINT, "")?.trim().orEmpty()
+        val azKey = prefs.getString(MainActivity.KEY_AZURE_KEY, "")?.trim().orEmpty()
+        if (endpoint.isBlank() || azKey.isBlank()) {
+            Toast.makeText(this, "Azure nicht konfiguriert", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        translator = MistralTranslator(mistralKey)
+        targetLang = lang
+        translateMode = true
+        leftTurns.clear()
+        rightTurns.clear()
+
+        // Split the screen and label the panes.
+        binding.paneRight.visibility = View.VISIBLE
+        binding.tvPaneLeftLabel.visibility = View.VISIBLE
+        binding.tvPaneLeftLabel.text = "Deutsch"
+        binding.tvPaneRightLabel.text = lang.display
+        binding.tvHistory.text = ""
+        binding.tvHistorySecondary.text = ""
+        binding.btnTranslate.visibility = View.GONE
+        binding.tvStatus.text = "Übersetzung aktiv …"
+
+        // Restart STT with continuous language identification (German + chosen).
+        try { engine?.stop() } catch (_: Exception) {}
+        val eng = AzureSttEngine(endpoint, azKey, candidateLanguages = listOf("de-DE", lang.sttCode))
+        eng.onResultWithLanguage = { text, isFinal, speakerId, language ->
+            handler.post { onTranslatedResult(text, isFinal, speakerId, language) }
+        }
+        eng.onError = { msg ->
+            DiagLog.log(this, "Übersetzen STT-Fehler: $msg")
+            handler.post { binding.tvStatus.text = msg }
+        }
+        try {
+            eng.prepare(16000)
+        } catch (e: Exception) {
+            Log.e(TAG, "translate engine prepare failed", e)
+            handler.post { binding.tvStatus.text = "Start fehlgeschlagen" }
+            return
+        }
+        // MicRecorder.onPcmData feeds the `engine` field, so swapping it is enough.
+        engine = eng
+    }
+
+    /**
+     * A finalized turn arrived in translation mode. Show the original on its
+     * own-language pane and the Mistral translation on the other pane.
+     */
+    private fun onTranslatedResult(text: String, isFinal: Boolean, speakerId: String?, language: String?) {
+        if (text.isBlank()) return
+        armIdleTimer()
+        if (!isFinal) return  // partials aren't translated — too many round-trips
+        val sid = speakerId ?: "Unknown"
+        val lang = targetLang ?: return
+        val isGerman = language?.startsWith("de", ignoreCase = true) == true
+        if (isGerman) {
+            leftTurns.add(Turn(sid, text)); renderLeftPane()
+            translator?.translate(text, lang.englishName) { tr ->
+                if (tr != null) handler.post { rightTurns.add(Turn(sid, tr)); renderRightPane() }
+            }
+        } else {
+            rightTurns.add(Turn(sid, text)); renderRightPane()
+            translator?.translate(text, "German") { tr ->
+                if (tr != null) handler.post { leftTurns.add(Turn(sid, tr)); renderLeftPane() }
+            }
+        }
+    }
+
+    private fun renderLeftPane() {
+        binding.tvHistory.text = buildSpannableFor(leftTurns)
+        binding.scrollHistory.post { binding.scrollHistory.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    private fun renderRightPane() {
+        binding.tvHistorySecondary.text = buildSpannableFor(rightTurns)
+        binding.scrollHistorySecondary.post { binding.scrollHistorySecondary.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    private fun buildSpannableFor(list: List<Turn>): SpannableStringBuilder {
+        val builder = SpannableStringBuilder()
+        for ((i, turn) in list.withIndex()) {
+            appendTurn(builder, turn, partial = false)
+            if (i < list.size - 1) builder.append('\n')
+        }
+        return builder
+    }
+
     private fun buildLabeledTranscript(): String {
         if (turns.isEmpty()) return ""
         val sb = StringBuilder()
@@ -363,6 +513,11 @@ class ListenActivity : AppCompatActivity() {
             sb.append('[').append(label).append("] ").append(turn.text).append('\n')
         }
         return sb.toString().trimEnd()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) enterImmersiveMode()
     }
 
     override fun onResume() {

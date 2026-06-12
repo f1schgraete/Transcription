@@ -39,9 +39,13 @@ class TranscriptionManager(private val context: Context) {
     private val dlRecorder = CallAudioRecorder()
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // Per-direction Azure engines — only created in Azure mode.
-    private val ulEngine: SttEngine? = if (provider == MainActivity.STT_PROVIDER_GOOGLE) null else newAzureEngine()
-    private val dlEngine: SttEngine? = if (provider == MainActivity.STT_PROVIDER_GOOGLE) null else newAzureEngine()
+    /** True for providers that recognise each leg with its own engine
+     *  (Azure, Voxtral) rather than a single stereo stream (Google). */
+    private val perLeg = provider != MainActivity.STT_PROVIDER_GOOGLE
+
+    // Per-direction engines — only created in per-leg (Azure/Voxtral) mode.
+    private val ulEngine: SttEngine? = if (perLeg) newLegEngine() else null
+    private val dlEngine: SttEngine? = if (perLeg) newLegEngine() else null
 
     // Single Google engine + stereo merger — only created in Google mode.
     private val googleEngine: SttEngine? = if (provider == MainActivity.STT_PROVIDER_GOOGLE) newGoogleEngine() else null
@@ -59,12 +63,19 @@ class TranscriptionManager(private val context: Context) {
             ?: MainActivity.STT_PROVIDER_AZURE
     }
 
-    private fun newAzureEngine(): SttEngine {
+    /** Builds the per-leg engine for the chosen provider (Azure or Voxtral). */
+    private fun newLegEngine(): SttEngine {
         val prefs = context.getSharedPreferences(MainActivity.PREFS, MODE_PRIVATE)
-        return AzureSttEngine(
-            endpoint = prefs.getString(MainActivity.KEY_AZURE_ENDPOINT, "") ?: "",
-            apiKey   = prefs.getString(MainActivity.KEY_AZURE_KEY, "") ?: ""
-        )
+        return if (provider == MainActivity.STT_PROVIDER_VOXTRAL) {
+            VoxtralSttEngine(
+                apiKey = prefs.getString(MainActivity.KEY_VOXTRAL_KEY, "") ?: ""
+            )
+        } else {
+            AzureSttEngine(
+                endpoint = prefs.getString(MainActivity.KEY_AZURE_ENDPOINT, "") ?: "",
+                apiKey   = prefs.getString(MainActivity.KEY_AZURE_KEY, "") ?: ""
+            )
+        }
     }
 
     private fun newGoogleEngine(): SttEngine {
@@ -92,18 +103,21 @@ class TranscriptionManager(private val context: Context) {
         if (provider == MainActivity.STT_PROVIDER_GOOGLE) {
             startGoogle(uplinkPath, downlinkPath, sampleRate, callerOnly)
         } else {
-            startAzure(uplinkPath, downlinkPath, sampleRate, callerOnly)
+            startPerLeg(uplinkPath, downlinkPath, sampleRate, callerOnly)
         }
     }
 
-    private fun startAzure(uplinkPath: String, downlinkPath: String, sampleRate: Int, callerOnly: Boolean) {
+    /** Azure / Voxtral: one engine per direction, each tagged with a fixed
+     *  speaker label. `callerOnly` skips the uplink engine entirely, so no
+     *  second cloud connection is opened — halving STT cost. */
+    private fun startPerLeg(uplinkPath: String, downlinkPath: String, sampleRate: Int, callerOnly: Boolean) {
         if (!callerOnly) {
-            wireAzure(ulEngine!!, ulRecorder, uplinkPath, sampleRate, LABEL_LOCAL)
+            wireLeg(ulEngine!!, ulRecorder, uplinkPath, sampleRate, LABEL_LOCAL)
         }
-        wireAzure(dlEngine!!, dlRecorder, downlinkPath, sampleRate, LABEL_REMOTE)
+        wireLeg(dlEngine!!, dlRecorder, downlinkPath, sampleRate, LABEL_REMOTE)
     }
 
-    private fun wireAzure(
+    private fun wireLeg(
         engine: SttEngine,
         recorder: CallAudioRecorder,
         path: String,

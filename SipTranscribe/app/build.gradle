@@ -63,6 +63,11 @@ dependencies {
         exclude group: 'io.grpc', module: 'grpc-netty'
     }
     implementation 'io.grpc:grpc-okhttp:1.62.2'
+
+    // Square OkHttp — its WebSocket client drives the Mistral Voxtral
+    // realtime STT engine. (io.grpc:grpc-okhttp above is an unrelated gRPC
+    // transport and does not expose a WebSocket API.)
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
 
 // google-cloud-speech ships a couple of `META-INF/*.properties` and

@@ -2,6 +2,7 @@ package com.siptranscribe.app
 
 import android.util.Log
 import com.microsoft.cognitiveservices.speech.CancellationReason
+import com.microsoft.cognitiveservices.speech.PropertyId
 import com.microsoft.cognitiveservices.speech.SpeechConfig
 import com.microsoft.cognitiveservices.speech.audio.AudioConfig
 import com.microsoft.cognitiveservices.speech.audio.AudioStreamFormat
@@ -20,7 +21,13 @@ import java.net.URI
  */
 class AzureSttEngine(
     private val endpoint: String,
-    private val apiKey: String
+    private val apiKey: String,
+    /**
+     * When non-null and holding ≥2 BCP-47 codes (e.g. ["de-DE","en-US"]),
+     * Azure runs continuous language identification across them instead of
+     * recognising a single fixed language. Used by Zuhören's translation mode.
+     */
+    private val candidateLanguages: List<String>? = null
 ) : SttEngine {
 
     companion object {
@@ -30,6 +37,13 @@ class AzureSttEngine(
 
     override var onResult: ((String, Boolean, String?) -> Unit)? = null
     override var onError: ((String) -> Unit)? = null
+
+    /**
+     * Like [onResult] but also reports the auto-detected source language
+     * (e.g. "de-DE"), or null when language ID isn't active. When set, this is
+     * called instead of [onResult]. Only meaningful with [candidateLanguages].
+     */
+    var onResultWithLanguage: ((String, Boolean, String?, String?) -> Unit)? = null
 
     @Volatile private var pushStream: PushAudioInputStream? = null
     @Volatile private var transcriber: ConversationTranscriber? = null
@@ -49,25 +63,36 @@ class AzureSttEngine(
             onError?.invoke("Azure-Endpunkt ungültig: $endpoint")
             return
         }
-        speechConfig.speechRecognitionLanguage = LANGUAGE
 
         val audioConfig = AudioConfig.fromStreamInput(stream)
+        val cand = candidateLanguages
+        if (cand != null && cand.size >= 2) {
+            // Continuous language identification across the candidates so
+            // speakers switching between e.g. German and English mid-session
+            // are each recognised in their own language. Configured via
+            // properties (the ConversationTranscriber has no auto-detect ctor).
+            speechConfig.setProperty(PropertyId.SpeechServiceConnection_LanguageIdMode, "Continuous")
+            speechConfig.setProperty(
+                PropertyId.SpeechServiceConnection_AutoDetectSourceLanguages,
+                cand.joinToString(",")
+            )
+        } else {
+            speechConfig.speechRecognitionLanguage = LANGUAGE
+        }
         val tx = ConversationTranscriber(speechConfig, audioConfig).also { transcriber = it }
 
         tx.transcribing.addEventListener { _, e ->
             val text = e.result.text
-            val speakerId = e.result.speakerId
             if (text.isNotBlank()) {
-                Log.d(TAG, "Partial[$speakerId]: \"$text\"")
-                onResult?.invoke(text, false, speakerId)
+                Log.d(TAG, "Partial[${e.result.speakerId}]: \"$text\"")
+                emit(text, false, e.result.speakerId, detectedLanguage(e.result))
             }
         }
         tx.transcribed.addEventListener { _, e ->
             val text = e.result.text
-            val speakerId = e.result.speakerId
             if (text.isNotBlank()) {
-                Log.i(TAG, "Final[$speakerId]: \"$text\"")
-                onResult?.invoke(text, true, speakerId)
+                Log.i(TAG, "Final[${e.result.speakerId}]: \"$text\"")
+                emit(text, true, e.result.speakerId, detectedLanguage(e.result))
             }
         }
         tx.canceled.addEventListener { _, e ->
@@ -87,6 +112,27 @@ class AzureSttEngine(
     override fun feed(pcm: ByteArray, length: Int) {
         // PushAudioInputStream.write() consumes the entire array, so trim if needed.
         pushStream?.write(if (length == pcm.size) pcm else pcm.copyOf(length))
+    }
+
+    /** Route a result to the language-aware callback if set, else the plain one. */
+    private fun emit(text: String, isFinal: Boolean, speakerId: String?, language: String?) {
+        val withLang = onResultWithLanguage
+        if (withLang != null) withLang(text, isFinal, speakerId, language)
+        else onResult?.invoke(text, isFinal, speakerId)
+    }
+
+    /** Detected source language for a result, or null when LID isn't active. */
+    private fun detectedLanguage(
+        result: com.microsoft.cognitiveservices.speech.RecognitionResult
+    ): String? {
+        if (candidateLanguages == null) return null
+        return try {
+            result.properties
+                .getProperty(PropertyId.SpeechServiceConnection_AutoDetectSourceLanguageResult)
+                ?.takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /**

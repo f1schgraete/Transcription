@@ -263,6 +263,14 @@
                                 android:text="Eigene Stimme im Live-Transkript anzeigen"
                                 android:textSize="15sp" />
 
+                            <CheckBox
+                                android:id="@+id/cb_translate_enabled"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="10dp"
+                                android:text="Übersetzen in Zuhören anbieten"
+                                android:textSize="15sp" />
+
                         </LinearLayout>
 
                         <!-- ── Section: KI / Zusammenfassung ── -->
@@ -340,6 +348,21 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content"
                                     android:inputType="none"
+                                    android:textSize="16sp" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Voxtral API-Schl&#xFC;ssel"
+                                android:layout_marginTop="10dp"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                                app:passwordToggleEnabled="true">
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/et_voxtral_key"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="textPassword"
                                     android:textSize="16sp" />
                             </com.google.android.material.textfield.TextInputLayout>
 

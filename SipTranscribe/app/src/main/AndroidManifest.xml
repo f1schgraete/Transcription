@@ -22,14 +22,29 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SipTranscribe">
 
+        <!--
+            MainActivity doubles as the device HOME launcher (kiosk Phase 1).
+            With the app set as the default Home app, the system launches it
+            automatically on boot (which in turn starts SipService so the phone
+            can receive calls without anyone opening the app), and the Home
+            button always returns here instead of the stock launcher.
+            launchMode=singleTask keeps a single instance and delivers re-launch
+            intents to onNewIntent rather than stacking duplicates.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:screenOrientation="landscape"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
@@ -53,6 +68,11 @@
             android:exported="false"
             android:screenOrientation="landscape"
             android:parentActivityName=".MainActivity" />
+
+        <activity
+            android:name=".MissedCallsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
 
         <!--
             Home-screen widget intentionally NOT registered. The on-tablet

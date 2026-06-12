@@ -3,9 +3,13 @@ package com.siptranscribe.app
 import android.app.NotificationManager
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
@@ -73,6 +77,19 @@ class CallActivity : AppCompatActivity() {
     private var activeCall: org.linphone.core.Call? = null
 
     /**
+     * A second call that arrived while [activeCall] was already in
+     * conversation. We don't interrupt the active call (see [onNewIntent]);
+     * instead the waiting caller is shown in a banner and, once the user
+     * hangs up, presented on the normal incoming screen if still ringing.
+     * Null whenever no second call is pending.
+     */
+    private var waitingCall: org.linphone.core.Call? = null
+    private var waitingCallerName = ""
+    private var waitingCallerNumber = ""
+    /** Pending "…hat aufgelegt" banner-fade callback, so we can cancel it. */
+    private var waitingBannerHide: Runnable? = null
+
+    /**
      * Monotonic counter bumped every time [recycleForNewCall] flips the
      * activity over to a new call. Async work that survives across
      * recycles — most importantly the ConversationAnalyzer thread, which
@@ -136,6 +153,11 @@ class CallActivity : AppCompatActivity() {
 
         private const val MIN_CHARS_FOR_SUMMARY = 80
 
+        /** Call states from which no further progress is possible. */
+        private val TERMINAL_STATES = setOf(
+            Call.State.End, Call.State.Released, Call.State.Error
+        )
+
         /**
          * Wall-clock time the most recent call became active (answered /
          * streams running). ListenActivity reads this to decide what to do
@@ -175,6 +197,7 @@ class CallActivity : AppCompatActivity() {
 
         binding = ActivityCallBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        enterImmersiveMode()
 
         val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
         callerName = intent.getStringExtra(EXTRA_REMOTE_ADDRESS) ?: "Unbekannt"
@@ -228,9 +251,13 @@ class CallActivity : AppCompatActivity() {
      * later live onCallStateChanged callbacks are harmless no-ops.
      */
     private fun syncToCurrentCallState() {
-        val currentCall = LinphoneManager.getCurrentCall()
-        if (activeCall == null) activeCall = currentCall
-        when (currentCall?.state) {
+        // Reconcile against the call this activity is presenting. We must not
+        // switch on core.currentCall here: while two calls coexist it may be a
+        // different (e.g. just-displaced) call, and adopting its terminal state
+        // would wrongly endCall() this fresh screen. Fall back to currentCall
+        // only when we haven't adopted a call yet (first launch).
+        if (activeCall == null) activeCall = LinphoneManager.getCurrentCall()
+        when (activeCall?.state) {
             Call.State.End, Call.State.Released, Call.State.Error -> endCall()
             Call.State.Connected -> {
                 showActiveUI()
@@ -268,7 +295,10 @@ class CallActivity : AppCompatActivity() {
         applySpeakerButtonStyle()
 
         binding.btnAccept.setOnClickListener {
-            LinphoneManager.getCurrentCall()?.let { call ->
+            // Accept the call this activity is presenting. activeCall is the
+            // one we adopted (reliable even when two calls coexist); fall back
+            // to currentCall only if we somehow haven't adopted one yet.
+            (activeCall ?: LinphoneManager.getCurrentCall())?.let { call ->
                 // For incoming calls: generate the path here so it's in the call params
                 // before acceptWithParams is called.
                 recordFilePath = "${filesDir.absolutePath}/call_${System.currentTimeMillis()}.wav"
@@ -320,7 +350,15 @@ class CallActivity : AppCompatActivity() {
             // (End / Released) would re-trigger endCall() on a call we
             // are currently in the middle of presenting.
             if (activeCall == null) activeCall = call
-            if (call !== activeCall) return@lambda
+            if (call !== activeCall) {
+                // Not the call we're presenting. If it's the waiting second
+                // call and it just ended, update the banner so it stops
+                // claiming someone is still there.
+                if (call === waitingCall && state in TERMINAL_STATES) {
+                    runOnUiThread { onWaitingCallGone() }
+                }
+                return@lambda
+            }
             runOnUiThread {
                 when (state) {
                     Call.State.OutgoingRinging -> binding.tvStatus.text = "Klingelt..."
@@ -621,13 +659,36 @@ class CallActivity : AppCompatActivity() {
         saveCallRecord(answeredCall = answered)
         cancelIncomingNotification()
 
-        // Missed-/elsewhere-answered-call path: there's no transcript and
-        // no summary, just close back to the main screen instead of leaving
-        // the user staring at a "Schließen" review screen. answered is true
-        // only after StreamsRunning fires or the user tapped Annehmen here,
-        // so an outgoing call that never connected or an incoming call
-        // grabbed by another registered device both land here.
+        // Hand-off: a second caller is waiting and still ringing → present
+        // them on the familiar incoming screen instead of the call-ended
+        // review. The user finishes one conversation and the next person
+        // simply "arrives" as a normal incoming call — one decision at a
+        // time, no call juggling. recycleForNewCall resets all per-call state.
+        val waiting = waitingCall
+        if (waiting != null && isCallRinging(waiting)) {
+            val switchIntent = Intent(this, CallActivity::class.java).apply {
+                putExtra(EXTRA_IS_INCOMING, true)
+                putExtra(EXTRA_REMOTE_ADDRESS, waitingCallerName)
+                putExtra(EXTRA_REMOTE_NUMBER, waitingCallerNumber)
+            }
+            setIntent(switchIntent)
+            recycleForNewCall(switchIntent)
+            return
+        }
+        // No one waiting (or they gave up): drop any lingering banner.
+        hideWaitingCall()
+
+        // Missed-/unanswered-call path: instead of leaving the user on the
+        // call/Auflegen screen (or silently dropping to the home screen), show
+        // the "Verpasste Anrufe" list — the deaf user can't hear a call come
+        // in, so a clear list of who tried to reach her is what's useful.
+        // answered is true only after StreamsRunning fires or the user tapped
+        // Annehmen, so an unanswered incoming call, an outgoing call that was
+        // never picked up, and an incoming call grabbed by another registered
+        // device all land here. saveCallRecord() above has already persisted
+        // this call as not-answered, so it appears in the list.
         if (!answered) {
+            startActivity(Intent(this, MissedCallsActivity::class.java))
             finish()
             return
         }
@@ -853,20 +914,93 @@ class CallActivity : AppCompatActivity() {
      * exists (SipService uses SINGLE_TOP + the activity is launchMode
      * singleTop in the manifest, so the intent lands here instead of
      * making a duplicate instance). Behaviour:
-     *  - If the previous call is over (callEnded=true), recycle this
-     *    activity into the new call's UI. Without this the user is
-     *    stuck on the Schließen screen and the new caller's name never
-     *    appears — they see the heads-up notification but in-app
-     *    nothing changes.
-     *  - If a call is still active, ignore. The heads-up notification
-     *    stays up and takes the user to the new call after they hang
-     *    up; we deliberately don't interrupt an active conversation.
+     *  - If there's a genuinely *active* conversation (answered and not yet
+     *    ended), ignore the new intent. The heads-up notification stays up
+     *    and takes the user to the new call after they hang up; we
+     *    deliberately don't interrupt a live conversation (and recycling
+     *    would tear down its in-progress transcript).
+     *  - Otherwise — the previous call is merely ringing/unanswered, or has
+     *    already ended — recycle this activity into the new call's UI so the
+     *    current call always wins the screen. Previously this only recycled
+     *    when the previous call had fully ended, so a *not-picked-up* call's
+     *    ringing screen lingered and a newly-arriving call never appeared
+     *    in-app. The new caller is what matters; the stale ringing screen
+     *    must yield.
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (answered && !callEnded) {
+            // Active conversation: don't interrupt it. Surface the second
+            // caller as a non-actionable banner plus a vibration cue (the
+            // deaf user gets no call-waiting tone). She takes them after
+            // hanging up. NOTE: we deliberately do NOT setIntent() here — the
+            // stored intent must keep describing the *active* call so its
+            // history row / direction stay correct when it ends.
+            val name = intent.getStringExtra(EXTRA_REMOTE_ADDRESS) ?: "Unbekannt"
+            val number = intent.getStringExtra(EXTRA_REMOTE_NUMBER) ?: name
+            showWaitingCall(name, number, LinphoneManager.latestIncomingCall)
+            return
+        }
         setIntent(intent)
-        if (!callEnded) return
         recycleForNewCall(intent)
+    }
+
+    /**
+     * Display the persistent waiting-call banner for a second caller and buzz
+     * the device. No answer button by design — the only in-call action stays
+     * the big red Auflegen.
+     */
+    private fun showWaitingCall(name: String, number: String, call: org.linphone.core.Call?) {
+        waitingCall = call
+        waitingCallerName = name
+        waitingCallerNumber = number
+        waitingBannerHide?.let { handler.removeCallbacks(it) }
+        waitingBannerHide = null
+        val banner = binding.layoutWaitingCall ?: return
+        binding.tvWaitingCaller?.text = "$name ruft auch an"
+        binding.tvWaitingHint?.text = "Zum Annehmen zuerst auflegen."
+        banner.visibility = View.VISIBLE
+        vibrateWaitingCue()
+    }
+
+    /**
+     * The waiting caller gave up before the user finished. Tell the truth so
+     * the banner doesn't keep claiming someone is there, then fade it.
+     */
+    private fun onWaitingCallGone() {
+        waitingCall = null
+        binding.tvWaitingCaller?.text =
+            "${waitingCallerName.ifBlank { "Anrufer" }} hat aufgelegt"
+        binding.tvWaitingHint?.text = ""
+        val hide = Runnable { binding.layoutWaitingCall?.visibility = View.GONE }
+        waitingBannerHide = hide
+        handler.postDelayed(hide, 4000)
+    }
+
+    private fun hideWaitingCall() {
+        waitingBannerHide?.let { handler.removeCallbacks(it) }
+        waitingBannerHide = null
+        waitingCall = null
+        binding.layoutWaitingCall?.visibility = View.GONE
+    }
+
+    private fun isCallRinging(call: org.linphone.core.Call): Boolean = when (call.state) {
+        Call.State.IncomingReceived, Call.State.IncomingEarlyMedia -> true
+        else -> false
+    }
+
+    /** Short double-buzz so the deaf user notices the waiting-call banner. */
+    private fun vibrateWaitingCue() {
+        try {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                getSystemService(VibratorManager::class.java)?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION") getSystemService(Vibrator::class.java)
+            } ?: return
+            vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 400, 200, 400), -1))
+        } catch (e: Exception) {
+            Log.w(TAG, "vibrate failed", e)
+        }
     }
 
     /**
@@ -876,6 +1010,12 @@ class CallActivity : AppCompatActivity() {
      * intents; `EXTRA_IS_INCOMING` picks which ringing-UI to show.
      */
     private fun recycleForNewCall(intent: Intent) {
+        // The call this activity was presenting until now. We only reach
+        // recycle for a previous call that is NOT an active conversation
+        // (onNewIntent guards that), so it's a ringing/unanswered or already
+        // ended call — safe to terminate once the new call is adopted.
+        val displaced = activeCall
+
         // Bump generation FIRST so any in-flight analyser threads that are
         // about to post back on the main handler see a stale gen and bail.
         callGeneration.incrementAndGet()
@@ -914,9 +1054,30 @@ class CallActivity : AppCompatActivity() {
         transcriber = TranscriptionManager(this)
         setupTranscriber()
 
-        // Adopt whichever call Linphone is now bound to so the state
-        // listener filter routes events to this recycled instance.
-        activeCall = LinphoneManager.getCurrentCall()
+        // Adopt the newest call so the state-listener filter routes its
+        // events to this recycled instance. For incoming calls we use the
+        // explicitly-tracked latest INVITE (core.currentCall is ambiguous
+        // while two calls coexist); outgoing calls are always currentCall.
+        val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
+        activeCall = if (isIncoming)
+            (LinphoneManager.latestIncomingCall ?: LinphoneManager.getCurrentCall())
+        else
+            LinphoneManager.getCurrentCall()
+
+        // Stop the displaced call so the phone isn't still ringing for a call
+        // we've navigated away from. activeCall now points at the new call, so
+        // the displaced call's later End/Released is filtered out by the
+        // listener and can't tear down this fresh screen.
+        if (displaced != null && displaced !== activeCall) {
+            try {
+                when (displaced.state) {
+                    Call.State.End, Call.State.Released, Call.State.Error -> {}
+                    else -> displaced.terminate()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to terminate displaced call", e)
+            }
+        }
 
         // Refresh caller info from the new intent.
         callerName = intent.getStringExtra(EXTRA_REMOTE_ADDRESS) ?: "Unbekannt"
@@ -932,7 +1093,13 @@ class CallActivity : AppCompatActivity() {
         binding.btnLoeschen.visibility = View.GONE
         applySpeakerButtonStyle()
 
-        val isIncoming = intent.getBooleanExtra(EXTRA_IS_INCOMING, false)
+        // Clear any waiting-call banner carried over from the previous call.
+        binding.layoutWaitingCall?.visibility = View.GONE
+        waitingCall = null
+        waitingCallerName = ""
+        waitingCallerNumber = ""
+        waitingBannerHide = null
+
         if (isIncoming) showIncomingUI() else showCallingUI()
 
         // Same pre-listener race as onCreate: the recycled call may already be
@@ -942,6 +1109,11 @@ class CallActivity : AppCompatActivity() {
     }
 
     private var batteryWatcher: BatteryWatcher? = null
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) enterImmersiveMode()
+    }
 
     override fun onResume() {
         super.onResume()

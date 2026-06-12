@@ -8,10 +8,13 @@ import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -120,11 +123,45 @@ class MainActivity : AppCompatActivity() {
         const val KEY_GOOGLE_STT_PROJECT = "google_stt_project"
         const val STT_PROVIDER_AZURE = "azure"
         const val STT_PROVIDER_GOOGLE = "google"
+        const val STT_PROVIDER_VOXTRAL = "voxtral"
         const val DEFAULT_GOOGLE_STT_LANGUAGE = "de-DE"
+
+        /** Mistral Voxtral realtime API key. Test-grade: lives on the device
+         *  for the dialect bake-off; moves behind the backend proxy once
+         *  Voxtral is chosen. See [VoxtralSttEngine]. */
+        const val KEY_VOXTRAL_KEY = "voxtral_key"
+
+        /** Caregiver admin PIN guarding the hidden hatch to Android Settings /
+         *  other apps (kiosk Phase 1). Long-press the header battery indicator
+         *  to reach it. Stored in prefs so the caregiver can change it; the
+         *  default is intentionally simple — the threat model is just keeping
+         *  the (non-technical) user from wandering out, not real security. */
+        const val KEY_ADMIN_PIN = "admin_pin"
+        const val DEFAULT_ADMIN_PIN = "1234"
+
+        /** Single source of truth for the provider dropdown ↔ pref-key
+         *  mapping, used by both the live-save handlers and the loaders. */
+        fun providerKeyFromLabel(label: String): String = when {
+            label.equals("Google", ignoreCase = true) -> STT_PROVIDER_GOOGLE
+            label.equals("Voxtral", ignoreCase = true) -> STT_PROVIDER_VOXTRAL
+            else -> STT_PROVIDER_AZURE
+        }
+
+        fun providerLabelFromKey(key: String?): String = when (key) {
+            STT_PROVIDER_GOOGLE -> "Google"
+            STT_PROVIDER_VOXTRAL -> "Voxtral"
+            else -> "Azure"
+        }
         /** When false (the default), the elderly user's own voice doesn't
          *  appear in the live transcript pane. We still record and feed
          *  both directions to the analyser so the summary stays useful. */
         const val KEY_TRANSCRIPT_SHOW_LOCAL = "transcript_show_local"
+
+        /** Whether Zuhören offers the "Übersetzen" (translate) mode. Off by
+         *  default. When on, a second button appears in Zuhören to pick a
+         *  language and split the screen into a German / foreign-language
+         *  live translation (Mistral). See [ListenActivity]. */
+        const val KEY_TRANSLATE_ENABLED = "translate_enabled"
 
         /** Number of favourite slots displayed in the middle column.
          *  Clamped to [FAVOURITE_COUNT_OPTIONS] at read+write time. The
@@ -164,6 +201,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        enterImmersiveMode()
 
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         loadSettings()
@@ -280,11 +318,7 @@ class MainActivity : AppCompatActivity() {
             // instantly-saved setting like the checkboxes below.
             provider.setOnItemClickListener { _, _, _, _ ->
                 val label = provider.text?.toString().orEmpty()
-                prefs.edit().putString(
-                    KEY_STT_PROVIDER,
-                    if (label.equals("Google", ignoreCase = true)) STT_PROVIDER_GOOGLE
-                    else STT_PROVIDER_AZURE
-                ).apply()
+                prefs.edit().putString(KEY_STT_PROVIDER, providerKeyFromLabel(label)).apply()
             }
         }
 
@@ -334,6 +368,9 @@ class MainActivity : AppCompatActivity() {
         // writes the same keys so this isn't a behavioural change for the
         // setup path — it just means the caregiver doesn't need to remember
         // to re-save settings after toggling a single checkbox.
+        binding.cbTranslateEnabled?.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(KEY_TRANSLATE_ENABLED, checked).apply()
+        }
         binding.cbTranscriptShowLocal.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(KEY_TRANSCRIPT_SHOW_LOCAL, checked).apply()
         }
@@ -367,10 +404,23 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ListenActivity::class.java))
         }
 
-        // Settings button: toggles card_settings visibility
+        // Settings button: toggles card_settings visibility (the app's OWN
+        // settings — SIP creds, STT keys, etc.)
         binding.btnSettings.setOnClickListener {
             val visible = binding.cardSettings.visibility == View.VISIBLE
             binding.cardSettings.visibility = if (visible) View.GONE else View.VISIBLE
+        }
+
+        // Hidden caregiver hatch (kiosk Phase 1): long-press the registration
+        // status label in the header to reach Android Settings / other apps,
+        // gated by a PIN so the user can't wander out. Deliberately
+        // undiscoverable by accident. Attached to tv_status because it's the
+        // one header element present in EVERY layout variant (phone + tablet),
+        // so the escape works even on a non-tablet build where tv_battery and
+        // the rest of the kiosk header are absent.
+        binding.tvStatus.setOnLongClickListener {
+            promptAdminPin()
+            true
         }
 
         // Keep registration status label updated
@@ -607,6 +657,11 @@ class MainActivity : AppCompatActivity() {
         saveAndRegister()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) enterImmersiveMode()
+    }
+
     override fun onResume() {
         super.onResume()
         // Refresh history and contacts whenever returning to this screen
@@ -653,15 +708,15 @@ class MainActivity : AppCompatActivity() {
             putString(KEY_MEDIA_ENC, binding.actvMediaEnc.text.toString())
             putBoolean(KEY_USE_SRV, binding.cbUseSrv.isChecked)
             putBoolean(KEY_TRANSCRIPT_SHOW_LOCAL, binding.cbTranscriptShowLocal.isChecked)
+            binding.cbTranslateEnabled?.let { putBoolean(KEY_TRANSLATE_ENABLED, it.isChecked) }
             putString(KEY_AZURE_ENDPOINT, binding.etAzureEndpoint.text.toString().trim())
             putString(KEY_AZURE_KEY, binding.etAzureKey.text.toString().trim())
             putString(KEY_AZURE_DEPLOYMENT, binding.etAzureDeployment.text.toString().trim())
             val providerLabel = binding.actvSttProvider?.text?.toString().orEmpty()
-            putString(
-                KEY_STT_PROVIDER,
-                if (providerLabel.equals("Google", ignoreCase = true)) STT_PROVIDER_GOOGLE
-                else STT_PROVIDER_AZURE
-            )
+            putString(KEY_STT_PROVIDER, providerKeyFromLabel(providerLabel))
+            binding.etVoxtralKey?.let {
+                putString(KEY_VOXTRAL_KEY, it.text.toString().trim())
+            }
             binding.etGoogleSttKey?.let {
                 putString(KEY_GOOGLE_STT_KEY, it.text.toString().trim())
             }
@@ -707,6 +762,112 @@ class MainActivity : AppCompatActivity() {
     private fun stopBatteryWatcher() {
         batteryWatcher?.stop()
         batteryWatcher = null
+    }
+
+    // ── Caregiver admin hatch (kiosk Phase 1) ──────────────────────────────
+    // The app is the device HOME launcher, so the stock launcher is out of
+    // reach by design. These PIN-gated helpers are the caregiver's way back to
+    // Android Settings and other installed apps.
+
+    /** Ask for the admin PIN; on success open the admin menu. */
+    private fun promptAdminPin() {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = "PIN"
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Administrator")
+            .setMessage("PIN eingeben, um zu Einstellungen / anderen Apps zu gelangen.")
+            .setView(input)
+            .setPositiveButton("Weiter") { _, _ ->
+                val entered = input.text.toString()
+                val expected = prefs.getString(KEY_ADMIN_PIN, DEFAULT_ADMIN_PIN)
+                if (entered == expected) {
+                    showAdminMenu()
+                } else {
+                    Toast.makeText(this, "Falsche PIN", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Abbrechen", null)
+            .show()
+    }
+
+    /** Admin actions: Android Settings, launch another app, change the PIN. */
+    private fun showAdminMenu() {
+        val items = arrayOf("Android-Einstellungen öffnen", "Andere App öffnen", "PIN ändern")
+        AlertDialog.Builder(this)
+            .setTitle("Administrator")
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> openAndroidSettings()
+                    1 -> showAppPicker()
+                    2 -> promptChangePin()
+                }
+            }
+            .setNegativeButton("Schließen", null)
+            .show()
+    }
+
+    private fun openAndroidSettings() {
+        try {
+            startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) {
+            Toast.makeText(this, "Einstellungen nicht verfügbar", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * List the other launchable apps installed on the device and start the one
+     * the caregiver picks. We query CATEGORY_LAUNCHER ourselves because, as the
+     * Home app, we've replaced the stock launcher's app drawer.
+     */
+    private fun showAppPicker() {
+        val pm = packageManager
+        val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val apps = pm.queryIntentActivities(launcherIntent, 0)
+            .filter { it.activityInfo.packageName != packageName }
+            .map { it.activityInfo.loadLabel(pm).toString() to it.activityInfo.packageName }
+            .distinctBy { it.second }
+            .sortedBy { it.first.lowercase(Locale.getDefault()) }
+        if (apps.isEmpty()) {
+            Toast.makeText(this, "Keine anderen Apps gefunden", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val labels = apps.map { it.first }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("App öffnen")
+            .setItems(labels) { _, which ->
+                val pkg = apps[which].second
+                val launch = pm.getLaunchIntentForPackage(pkg)
+                if (launch != null) {
+                    startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } else {
+                    Toast.makeText(this, "App kann nicht gestartet werden", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Abbrechen", null)
+            .show()
+    }
+
+    private fun promptChangePin() {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = "Neue PIN"
+        }
+        AlertDialog.Builder(this)
+            .setTitle("PIN ändern")
+            .setView(input)
+            .setPositiveButton("Speichern") { _, _ ->
+                val newPin = input.text.toString().trim()
+                if (newPin.length < 4) {
+                    Toast.makeText(this, "PIN muss mindestens 4 Ziffern haben", Toast.LENGTH_SHORT).show()
+                } else {
+                    prefs.edit().putString(KEY_ADMIN_PIN, newPin).apply()
+                    Toast.makeText(this, "PIN geändert", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Abbrechen", null)
+            .show()
     }
 
     private fun updateRegistrationUI(registered: Boolean) {
@@ -1141,6 +1302,8 @@ class MainActivity : AppCompatActivity() {
         binding.cbUseSrv.isChecked = prefs.getBoolean(KEY_USE_SRV, true)
         binding.cbTranscriptShowLocal.isChecked =
             prefs.getBoolean(KEY_TRANSCRIPT_SHOW_LOCAL, false)
+        binding.cbTranslateEnabled?.isChecked =
+            prefs.getBoolean(KEY_TRANSLATE_ENABLED, false)
         val favCount = currentFavouriteCount()
         binding.actvFavouriteCount.setText(favCount.toString(), false)
         binding.etAzureEndpoint.setText(prefs.getString(KEY_AZURE_ENDPOINT, ""))
@@ -1149,9 +1312,8 @@ class MainActivity : AppCompatActivity() {
         // STT provider stays in prefs as a lowercase key ("azure" / "google")
         // but is shown to the user via the capitalised array entries.
         val providerKey = prefs.getString(KEY_STT_PROVIDER, STT_PROVIDER_AZURE)
-        val providerLabel =
-            if (providerKey == STT_PROVIDER_GOOGLE) "Google" else "Azure"
-        binding.actvSttProvider?.setText(providerLabel, false)
+        binding.actvSttProvider?.setText(providerLabelFromKey(providerKey), false)
+        binding.etVoxtralKey?.setText(prefs.getString(KEY_VOXTRAL_KEY, ""))
         binding.etGoogleSttKey?.setText(prefs.getString(KEY_GOOGLE_STT_KEY, ""))
         binding.etGoogleSttLanguage?.setText(
             prefs.getString(KEY_GOOGLE_STT_LANGUAGE, DEFAULT_GOOGLE_STT_LANGUAGE)
@@ -1222,15 +1384,15 @@ class MainActivity : AppCompatActivity() {
             putString(KEY_MEDIA_ENC, mediaEncStr)
             putBoolean(KEY_USE_SRV, useSrv)
             putBoolean(KEY_TRANSCRIPT_SHOW_LOCAL, binding.cbTranscriptShowLocal.isChecked)
+            binding.cbTranslateEnabled?.let { putBoolean(KEY_TRANSLATE_ENABLED, it.isChecked) }
             putString(KEY_AZURE_ENDPOINT, binding.etAzureEndpoint.text.toString().trim())
             putString(KEY_AZURE_KEY, binding.etAzureKey.text.toString().trim())
             putString(KEY_AZURE_DEPLOYMENT, binding.etAzureDeployment.text.toString().trim())
             val providerLabel = binding.actvSttProvider?.text?.toString().orEmpty()
-            putString(
-                KEY_STT_PROVIDER,
-                if (providerLabel.equals("Google", ignoreCase = true)) STT_PROVIDER_GOOGLE
-                else STT_PROVIDER_AZURE
-            )
+            putString(KEY_STT_PROVIDER, providerKeyFromLabel(providerLabel))
+            binding.etVoxtralKey?.let {
+                putString(KEY_VOXTRAL_KEY, it.text.toString().trim())
+            }
             binding.etGoogleSttKey?.let {
                 putString(KEY_GOOGLE_STT_KEY, it.text.toString().trim())
             }
