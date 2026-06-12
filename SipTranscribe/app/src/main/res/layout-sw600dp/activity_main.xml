@@ -232,6 +232,120 @@
                             android:textColor="@color/text_primary"
                             android:paddingBottom="12dp" />
 
+                        <!--
+                            ── Tier 1: Bedienung (everyday) ──
+                            Settings the caregiver may adjust during normal use.
+                            Shown directly (no collapse) so they stay prominent;
+                            the one-time setup lives behind "Ersteinrichtung" below.
+                        -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Bedienung"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="2dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Anzahl Favoriten (Schnellwahl)"
+                            android:layout_marginTop="6dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+                            <AutoCompleteTextView
+                                android:id="@+id/actv_favourite_count"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="none"
+                                android:textSize="16sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <CheckBox
+                            android:id="@+id/cb_transcript_show_local"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="Eigene Stimme im Live-Transkript anzeigen"
+                            android:textSize="15sp" />
+
+                        <CheckBox
+                            android:id="@+id/cb_translate_enabled"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="Übersetzen in Zuhören anbieten"
+                            android:textSize="15sp" />
+
+                        <CheckBox
+                            android:id="@+id/cb_summary_enabled"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:text="Zusammenfassung aktiv (sonst nur Anrufer transkribieren)"
+                            android:textSize="15sp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Zusammenfassung-Intervall (Sekunden)"
+                            android:layout_marginTop="10dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_summary_interval"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:textSize="16sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Zuh&#xF6;ren: Stopp nach Stille (Minuten)"
+                            android:layout_marginTop="10dp"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/et_listen_timeout"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="number"
+                                android:textSize="16sp" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!--
+                            ── Tier 2: Ersteinrichtung (one-time) ──
+                            Master collapsible. Everything inside is configured
+                            once at install (SIP login, AI keys/endpoints,
+                            mailbox, advanced SIP, diagnostics). Collapsed by
+                            default; auto-expanded on a fresh install so the
+                            caregiver can reach the login fields.
+                        -->
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="14dp"
+                            android:layout_marginBottom="4dp"
+                            android:background="#1A000000" />
+
+                        <Button
+                            android:id="@+id/btn_section_setup"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="start|center_vertical"
+                            android:text="Ersteinrichtung (SIP &amp; KI) ▸"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+                        <LinearLayout
+                            android:id="@+id/layout_section_setup"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
                         <!-- ── Section: SIP-Verbindung (login, set once at setup) ── -->
                         <Button
                             android:id="@+id/btn_section_sip"
@@ -320,65 +434,14 @@
                             wireSettingsSections().
                         -->
 
-                        <!-- ── Section: Anzeige & Bedienung ── -->
-                        <Button
-                            android:id="@+id/btn_section_display"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="10dp"
-                            android:gravity="start|center_vertical"
-                            android:text="Anzeige &amp; Bedienung ▸"
-                            android:textSize="15sp"
-                            android:textStyle="bold"
-                            style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-                        <LinearLayout
-                            android:id="@+id/layout_section_display"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:visibility="gone">
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Anzahl Favoriten (Schnellwahl)"
-                                android:layout_marginTop="6dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-                                <AutoCompleteTextView
-                                    android:id="@+id/actv_favourite_count"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="none"
-                                    android:textSize="16sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <CheckBox
-                                android:id="@+id/cb_transcript_show_local"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="10dp"
-                                android:text="Eigene Stimme im Live-Transkript anzeigen"
-                                android:textSize="15sp" />
-
-                            <CheckBox
-                                android:id="@+id/cb_translate_enabled"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="10dp"
-                                android:text="Übersetzen in Zuhören anbieten"
-                                android:textSize="15sp" />
-
-                        </LinearLayout>
-
-                        <!-- ── Section: KI / Zusammenfassung ── -->
+                        <!-- ── Section: KI-Zugangsdaten (STT/LLM keys, endpoints, prompt) ── -->
                         <Button
                             android:id="@+id/btn_section_summary"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
                             android:gravity="start|center_vertical"
-                            android:text="KI / Zusammenfassung ▸"
+                            android:text="KI-Zugangsdaten ▸"
                             android:textSize="15sp"
                             android:textStyle="bold"
                             style="@style/Widget.MaterialComponents.Button.TextButton" />
@@ -389,43 +452,6 @@
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
                             android:visibility="gone">
-
-                            <CheckBox
-                                android:id="@+id/cb_summary_enabled"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Zusammenfassung aktiv (sonst nur Anrufer transkribieren)"
-                                android:textSize="16sp"
-                                android:paddingTop="4dp"
-                                android:paddingBottom="4dp" />
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Zusammenfassung-Intervall (Sekunden)"
-                                android:layout_marginTop="6dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_summary_interval"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="number"
-                                    android:textSize="16sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
-
-                            <com.google.android.material.textfield.TextInputLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:hint="Zuh&#xF6;ren: Stopp nach Stille (Minuten)"
-                                android:layout_marginTop="10dp"
-                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-                                <com.google.android.material.textfield.TextInputEditText
-                                    android:id="@+id/et_listen_timeout"
-                                    android:layout_width="match_parent"
-                                    android:layout_height="wrap_content"
-                                    android:inputType="number"
-                                    android:textSize="16sp" />
-                            </com.google.android.material.textfield.TextInputLayout>
 
                             <!--
                                 STT provider switcher. Azure uses the existing
@@ -811,6 +837,9 @@
                                 style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
                         </LinearLayout>
+
+                        </LinearLayout>
+                        <!-- ── end Tier 2: Ersteinrichtung ── -->
 
                         <Button
                             android:id="@+id/btn_register"

@@ -267,18 +267,21 @@ class MainActivity : AppCompatActivity() {
         // is nullable on the phone-landscape / portrait layouts (only the
         // tablet sw600dp variant has the new section headers) \u2014 wireSection
         // no-ops there so the activity still compiles for both.
+        wireSection(binding.btnSectionSetup, binding.layoutSectionSetup)
         wireSection(binding.btnSectionSip, binding.layoutSectionSip)
-        wireSection(binding.btnSectionDisplay, binding.layoutSectionDisplay)
         wireSection(binding.btnSectionSummary, binding.layoutSectionSummary)
         wireSection(binding.btnSectionMailbox, binding.layoutSectionMailbox)
         wireSection(binding.btnAdvanced, binding.layoutAdvanced)
         wireSection(binding.btnSectionDiag, binding.layoutSectionDiag)
 
-        // The SIP credential section is collapsed by default — it's only
-        // touched once during initial setup. On a fresh install (no username
-        // stored yet) we auto-expand it so the caregiver isn't faced with an
-        // all-collapsed settings card and nowhere obvious to type the login.
+        // The whole "Ersteinrichtung" block (SIP login + AI keys + advanced)
+        // is collapsed by default — it's only touched once during initial
+        // setup. On a fresh install (no username stored yet) we auto-expand
+        // the master section and the SIP sub-section so the caregiver isn't
+        // faced with an all-collapsed settings card and nowhere obvious to
+        // type the login.
         if (prefs.getString(KEY_USER, "").isNullOrBlank()) {
+            expandSection(binding.btnSectionSetup, binding.layoutSectionSetup)
             expandSection(binding.btnSectionSip, binding.layoutSectionSip)
         }
 
