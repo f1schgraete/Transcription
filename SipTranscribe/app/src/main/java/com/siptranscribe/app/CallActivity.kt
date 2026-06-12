@@ -276,13 +276,9 @@ class CallActivity : AppCompatActivity() {
     }
 
     private fun setupButtons() {
-        binding.btnHangUp.setOnClickListener {
-            LinphoneManager.hangUp()
-        }
+        binding.btnHangUp.setOnClickListener { hangUpWithSafetyNet() }
 
-        binding.btnHangUpRinging.setOnClickListener {
-            LinphoneManager.hangUp()
-        }
+        binding.btnHangUpRinging.setOnClickListener { hangUpWithSafetyNet() }
 
         binding.btnLoeschen.setOnClickListener {
             finish()
@@ -321,6 +317,25 @@ class CallActivity : AppCompatActivity() {
             cancelIncomingNotification()
             endCall()
         }
+    }
+
+    /**
+     * Hang up, with a safety net so the user is never stranded on the call
+     * screen. Normally LinphoneManager.hangUp() terminates the call and the
+     * resulting End/Released event runs endCall(), which tears the screen down.
+     * But if the SIP connection went stale in the background, terminate() can
+     * sit unacknowledged and that event never arrives — leaving the big red
+     * button apparently "dead" with no way back for a low-vision user. Schedule
+     * a fallback that force-ends the call locally if nothing happened in time.
+     */
+    private fun hangUpWithSafetyNet() {
+        LinphoneManager.hangUp()
+        handler.postDelayed({
+            if (!callEnded) {
+                Log.w(TAG, "hangUp safety net: no End event arrived, forcing endCall()")
+                endCall()
+            }
+        }, 2500)
     }
 
     private fun toggleSpeaker() {

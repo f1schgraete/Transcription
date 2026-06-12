@@ -419,7 +419,8 @@ class MainActivity : AppCompatActivity() {
         // so the escape works even on a non-tablet build where tv_battery and
         // the rest of the kiosk header are absent.
         binding.tvStatus.setOnLongClickListener {
-            promptAdminPin()
+            // No PIN gate — long-press opens the admin menu directly.
+            showAdminMenu()
             true
         }
 
@@ -670,6 +671,11 @@ class MainActivity : AppCompatActivity() {
         if (LinphoneManager.isRegistered) {
             refreshCallHistory()
             refreshContacts()
+            // Returning to the foreground (e.g. after switching to another app
+            // on the kiosk tablet) can leave a stale SIP socket that makes
+            // calls fail silently. Re-send a REGISTER so the connection is
+            // verified/rebuilt before the user tries to dial.
+            LinphoneManager.refreshRegistration()
         }
         startBatteryWatcher()
         refreshMissedCallBanner()
@@ -825,39 +831,15 @@ class MainActivity : AppCompatActivity() {
     // reach by design. These PIN-gated helpers are the caregiver's way back to
     // Android Settings and other installed apps.
 
-    /** Ask for the admin PIN; on success open the admin menu. */
-    private fun promptAdminPin() {
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            hint = "PIN"
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Administrator")
-            .setMessage("PIN eingeben, um zu Einstellungen / anderen Apps zu gelangen.")
-            .setView(input)
-            .setPositiveButton("Weiter") { _, _ ->
-                val entered = input.text.toString()
-                val expected = prefs.getString(KEY_ADMIN_PIN, DEFAULT_ADMIN_PIN)
-                if (entered == expected) {
-                    showAdminMenu()
-                } else {
-                    Toast.makeText(this, "Falsche PIN", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNegativeButton("Abbrechen", null)
-            .show()
-    }
-
-    /** Admin actions: Android Settings, launch another app, change the PIN. */
+    /** Admin actions: Android Settings, launch another app. */
     private fun showAdminMenu() {
-        val items = arrayOf("Android-Einstellungen öffnen", "Andere App öffnen", "PIN ändern")
+        val items = arrayOf("Android-Einstellungen öffnen", "Andere App öffnen")
         AlertDialog.Builder(this)
             .setTitle("Administrator")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> openAndroidSettings()
                     1 -> showAppPicker()
-                    2 -> promptChangePin()
                 }
             }
             .setNegativeButton("Schließen", null)
@@ -899,27 +881,6 @@ class MainActivity : AppCompatActivity() {
                     startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 } else {
                     Toast.makeText(this, "App kann nicht gestartet werden", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNegativeButton("Abbrechen", null)
-            .show()
-    }
-
-    private fun promptChangePin() {
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            hint = "Neue PIN"
-        }
-        AlertDialog.Builder(this)
-            .setTitle("PIN ändern")
-            .setView(input)
-            .setPositiveButton("Speichern") { _, _ ->
-                val newPin = input.text.toString().trim()
-                if (newPin.length < 4) {
-                    Toast.makeText(this, "PIN muss mindestens 4 Ziffern haben", Toast.LENGTH_SHORT).show()
-                } else {
-                    prefs.edit().putString(KEY_ADMIN_PIN, newPin).apply()
-                    Toast.makeText(this, "PIN geändert", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("Abbrechen", null)

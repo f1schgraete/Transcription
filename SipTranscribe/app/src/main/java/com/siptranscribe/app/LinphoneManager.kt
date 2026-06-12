@@ -216,7 +216,39 @@ object LinphoneManager {
     }
 
     fun hangUp() {
-        core?.currentCall?.terminate()
+        val c = core ?: return
+        // Terminate the active call, then mop up any other calls (e.g. a
+        // waiting second caller, or a half-dead outgoing call on a stale
+        // connection) so a single Auflegen tap always clears everything.
+        try {
+            c.currentCall?.terminate()
+        } catch (e: Exception) {
+            Log.w(TAG, "hangUp: terminate(currentCall) failed", e)
+        }
+        try {
+            if (c.callsNb > 0) c.terminateAllCalls()
+        } catch (e: Exception) {
+            Log.w(TAG, "hangUp: terminateAllCalls failed", e)
+        }
+    }
+
+    /**
+     * Re-establish the SIP connection after the app returns to the foreground.
+     *
+     * When the app sits in the background (Doze, switching to another app on a
+     * kiosk tablet), the OS can silently tear down the TLS socket. Linphone's
+     * keepalive eventually notices, but until it does the registration shows a
+     * stale "Registriert" while calls quietly fail. Toggling network
+     * reachability forces Linphone to drop the dead transport, re-resolve DNS
+     * and send a fresh REGISTER, which reliably recovers the connection.
+     */
+    fun refreshRegistration() {
+        val c = core ?: return
+        try {
+            c.refreshRegisters()
+        } catch (e: Exception) {
+            Log.w(TAG, "refreshRegistration: refreshRegisters failed", e)
+        }
     }
 
     fun declineCall(call: Call) {
