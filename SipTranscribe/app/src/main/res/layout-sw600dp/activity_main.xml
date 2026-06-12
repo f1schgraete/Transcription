@@ -75,6 +75,14 @@
             android:fontFamily="monospace" />
 
         <Button
+            android:id="@+id/btn_call_history"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Letzte Anrufe"
+            android:textSize="14sp"
+            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+        <Button
             android:id="@+id/btn_settings"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -894,13 +902,13 @@
             android:layout_height="match_parent"
             android:layout_weight="2"
             android:layout_marginEnd="10dp"
+            android:gravity="center_vertical"
             android:orientation="vertical">
 
             <androidx.cardview.widget.CardView
                 android:id="@+id/card_favourites"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="10dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="4dp"
                 app:cardBackgroundColor="@color/surface">
@@ -1018,60 +1026,6 @@
                             android:text="+ Hinzufügen" />
 
                     </GridLayout>
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <androidx.cardview.widget.CardView
-                android:id="@+id/card_recent_calls"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:visibility="gone"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/surface">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Letzte Anrufe"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="4dp" />
-
-                    <ScrollView
-                        android:layout_width="match_parent"
-                        android:layout_height="0dp"
-                        android:layout_weight="1">
-
-                        <LinearLayout
-                            android:id="@+id/ll_call_history"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical" />
-
-                    </ScrollView>
-
-                    <TextView
-                        android:id="@+id/tv_no_calls"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Noch keine Anrufe"
-                        android:textSize="15sp"
-                        android:textColor="@color/status_neutral"
-                        android:gravity="center"
-                        android:padding="18dp"
-                        android:visibility="gone" />
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>

@@ -139,6 +139,14 @@ class MainActivity : AppCompatActivity() {
         const val KEY_ADMIN_PIN = "admin_pin"
         const val DEFAULT_ADMIN_PIN = "1234"
 
+        /** Timestamp (call startTime) of the most recent missed call the user
+         *  has acknowledged by tapping "Schließen"/"Zurückrufen" on the banner.
+         *  The missed-call banner only shows incoming unanswered calls newer
+         *  than this, so once dismissed it stays gone until a genuinely new
+         *  missed call arrives (instead of popping back every time the home
+         *  screen resumes). */
+        const val KEY_MISSED_ACK_TS = "missed_ack_ts"
+
         /** Single source of truth for the provider dropdown ↔ pref-key
          *  mapping, used by both the live-save handlers and the loaders. */
         fun providerKeyFromLabel(label: String): String = when {
@@ -411,6 +419,11 @@ class MainActivity : AppCompatActivity() {
             binding.cardSettings.visibility = if (visible) View.GONE else View.VISIBLE
         }
 
+        // "Letzte Anrufe" header button: opens the full call history on demand
+        // as a dialog, so the home screen body stays uncluttered (Favoriten
+        // gets the middle column to itself).
+        binding.btnCallHistory.setOnClickListener { showCallHistoryDialog() }
+
         // Hidden caregiver hatch (kiosk Phase 1): long-press the registration
         // status label in the header to reach Android Settings / other apps,
         // gated by a PIN so the user can't wander out. Deliberately
@@ -669,7 +682,6 @@ class MainActivity : AppCompatActivity() {
         // (e.g. after a call ends, or after the user added/removed someone
         // via the Vorgeschlagene Kontakte → system contacts app flow).
         if (LinphoneManager.isRegistered) {
-            refreshCallHistory()
             refreshContacts()
             // Returning to the foreground (e.g. after switching to another app
             // on the kiosk tablet) can leave a stale SIP socket that makes
@@ -697,14 +709,21 @@ class MainActivity : AppCompatActivity() {
      * is always the reliable fallback after any call ends.
      */
     private fun refreshMissedCallBanner() {
+        // Only show missed incoming calls the user hasn't acknowledged yet.
+        // Tapping Schließen/Zurückrufen records the newest missed call's
+        // timestamp, so the banner stays gone on subsequent resumes until a
+        // genuinely newer missed call arrives.
+        val ackTs = prefs.getLong(KEY_MISSED_ACK_TS, 0L)
         val missed = CallHistory.load(this)
-            .filter { !it.answered && it.direction == CallRecord.Direction.INCOMING }
+            .filter { !it.answered && it.direction == CallRecord.Direction.INCOMING && it.startTime > ackTs }
         if (missed.isEmpty()) {
             binding.cardMissedBanner.visibility = android.view.View.GONE
             return
         }
 
         val newest = missed.first()
+        // Acknowledging this banner clears every currently-visible missed call.
+        val acknowledge = { prefs.edit().putLong(KEY_MISSED_ACK_TS, newest.startTime).apply() }
         val name = newest.callerName
             .takeIf { it.isNotBlank() && it != newest.callerNumber }
             ?: newest.callerNumber.ifBlank { "Unbekannt" }
@@ -721,6 +740,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnMissedCallback.setOnClickListener {
+            acknowledge()
             val number = newest.callerNumber.ifBlank { name }
             handleAutoDialIntent(android.content.Intent(this, MainActivity::class.java).apply {
                 putExtra(ContactWidgetProvider.EXTRA_AUTO_DIAL_NUMBER, number)
@@ -730,6 +750,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.btnMissedDismiss.setOnClickListener {
+            acknowledge()
             binding.cardMissedBanner.visibility = android.view.View.GONE
         }
 
@@ -890,13 +911,10 @@ class MainActivity : AppCompatActivity() {
     private fun updateRegistrationUI(registered: Boolean) {
         if (registered) {
             binding.cardSettings.visibility = View.GONE
-            binding.cardRecentCalls.visibility = View.VISIBLE
             binding.cardContacts.visibility = View.VISIBLE
-            refreshCallHistory()
             refreshContacts()
         } else {
             binding.cardSettings.visibility = View.VISIBLE
-            binding.cardRecentCalls.visibility = View.GONE
             binding.cardContacts.visibility = View.GONE
         }
     }
@@ -976,38 +994,53 @@ class MainActivity : AppCompatActivity() {
         return row
     }
 
-    private fun refreshCallHistory() {
+    /** The on-demand "Letzte Anrufe" dialog, kept so a row tap can dismiss it
+     *  (after filling the call target) and so a delete can refresh it. */
+    private var callHistoryDialog: AlertDialog? = null
+
+    /**
+     * Full call history, shown on demand from the header "Letzte Anrufe"
+     * button instead of an always-visible card. Reuses [buildHistoryRow] so
+     * tap = call back and long-press = caregiver detail still work.
+     */
+    private fun showCallHistoryDialog() {
         val records = CallHistory.load(this)
-        binding.llCallHistory.removeAllViews()
+        val container = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
         if (records.isEmpty()) {
-            binding.tvNoCalls.visibility = View.VISIBLE
-            return
-        }
+            container.addView(TextView(this).apply {
+                text = "Noch keine Anrufe"
+                textSize = 16f
+                setTextColor(getColor(R.color.status_neutral))
+                gravity = Gravity.CENTER
+                setPadding(dp(24), dp(24), dp(24), dp(24))
+            })
+        } else {
+            val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val dateFmt = SimpleDateFormat("dd.MM.", Locale.getDefault())
+            val todayCal = Calendar.getInstance()
+            val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
 
-        binding.tvNoCalls.visibility = View.GONE
-
-        val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
-        val dateFmt = SimpleDateFormat("dd.MM.", Locale.getDefault())
-        val todayCal = Calendar.getInstance()
-        val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-
-        val displayRecords = records.take(10)
-        displayRecords.forEachIndexed { index, record ->
-            val row = buildHistoryRow(record, timeFmt, dateFmt, todayCal, yesterdayCal)
-            binding.llCallHistory.addView(row)
-
-            // Divider between rows
-            if (index < displayRecords.size - 1) {
-                val divider = View(this).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, dp(1)
-                    ).also { it.setMargins(dp(60), 0, dp(16), 0) }
-                    setBackgroundColor(0x1A000000)
+            val displayRecords = records.take(20)
+            displayRecords.forEachIndexed { index, record ->
+                container.addView(buildHistoryRow(record, timeFmt, dateFmt, todayCal, yesterdayCal))
+                if (index < displayRecords.size - 1) {
+                    container.addView(View(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, dp(1)
+                        ).also { it.setMargins(dp(60), 0, dp(16), 0) }
+                        setBackgroundColor(0x1A000000)
+                    })
                 }
-                binding.llCallHistory.addView(divider)
             }
         }
+
+        val scroll = android.widget.ScrollView(this).apply { addView(container) }
+        callHistoryDialog = AlertDialog.Builder(this)
+            .setTitle("Letzte Anrufe")
+            .setView(scroll)
+            .setPositiveButton("Schließen", null)
+            .show()
     }
 
     private fun buildHistoryRow(
@@ -1051,7 +1084,10 @@ class MainActivity : AppCompatActivity() {
             // works). Long-press = caregiver-facing detail view. Long-press
             // stays a hidden affordance so the elderly user never stumbles
             // into it by accident.
-            setOnClickListener { setCallTarget(displayNameForRecord(record), record.callerNumber) }
+            setOnClickListener {
+                setCallTarget(displayNameForRecord(record), record.callerNumber)
+                callHistoryDialog?.dismiss()
+            }
             setOnLongClickListener {
                 showCallDetailDialog(record)
                 true
@@ -1146,9 +1182,12 @@ class MainActivity : AppCompatActivity() {
     /**
      * Caregiver-facing detail view. Reached only by long-pressing a history
      * row, so it never appears for the elderly user by accident. Shows the
-     * persisted summary and full transcript for the call and offers a
-     * "Löschen" button that scrubs both the metadata and the encrypted
-     * archive file.
+     * persisted summary for the call (when summaries are enabled) and offers a
+     * "Löschen" button that scrubs both the metadata and the archive file.
+     *
+     * DSGVO: the verbatim transcript of the call is no longer retained — only
+     * the optional LLM summary is stored. When summaries are turned off there
+     * is nothing to show beyond the call metadata.
      */
     private fun showCallDetailDialog(record: CallRecord) {
         val archive = CallArchiveStore.load(this, record.id)
@@ -1170,33 +1209,20 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, dp(10))
         })
 
-        if (archive == null) {
+        if (archive?.summaryText.isNullOrBlank()) {
             container.addView(TextView(this).apply {
-                text = "Kein Transkript gespeichert."
+                text = "Keine Zusammenfassung gespeichert."
                 textSize = 14f
                 setTextColor(getColor(R.color.status_neutral))
             })
         } else {
-            if (!archive.summaryText.isNullOrBlank()) {
-                container.addView(sectionHeader("Zusammenfassung"))
-                container.addView(TextView(this).apply {
-                    text = archive.summaryText
-                    textSize = 14f
-                    setTextColor(getColor(R.color.text_primary))
-                    setPadding(0, 0, 0, dp(10))
-                })
-            }
-            if (archive.transcriptTurns.isNotEmpty()) {
-                container.addView(sectionHeader("Transkript"))
-                container.addView(TextView(this).apply {
-                    text = archive.transcriptTurns.joinToString("\n") {
-                        if (it.speakerLabel.isBlank()) it.text
-                        else "${it.speakerLabel}: ${it.text}"
-                    }
-                    textSize = 13f
-                    setTextColor(getColor(R.color.text_primary))
-                })
-            }
+            container.addView(sectionHeader("Zusammenfassung"))
+            container.addView(TextView(this).apply {
+                text = archive?.summaryText
+                textSize = 14f
+                setTextColor(getColor(R.color.text_primary))
+                setPadding(0, 0, 0, dp(10))
+            })
         }
 
         val scroll = android.widget.ScrollView(this).apply { addView(container) }
@@ -1223,7 +1249,10 @@ class MainActivity : AppCompatActivity() {
             .setMessage("Der Anruf und das gespeicherte Transkript werden entfernt.")
             .setPositiveButton("Löschen") { _, _ ->
                 CallHistory.remove(this, record.id)
-                refreshCallHistory()
+                CallArchiveStore.delete(this, record.id)
+                // Re-open the history dialog so it reflects the deletion.
+                callHistoryDialog?.dismiss()
+                showCallHistoryDialog()
             }
             .setNegativeButton("Abbrechen", null)
             .show()

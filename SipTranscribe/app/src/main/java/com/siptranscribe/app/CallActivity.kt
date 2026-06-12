@@ -822,12 +822,12 @@ class CallActivity : AppCompatActivity() {
      */
     private fun saveArchive() {
         if (callRecordId == 0L) return
-        if (turns.isEmpty() && latestSummaryText.isNullOrBlank()) return
+        // DSGVO: never persist the verbatim transcript. Only the optional
+        // post-call summary is stored, and only when one was produced.
+        if (latestSummaryText.isNullOrBlank()) return
         val archive = CallArchive(
             callId = callRecordId,
-            transcriptTurns = turns.map {
-                CallArchive.TranscriptTurn(it.speakerId, it.text)
-            },
+            transcriptTurns = emptyList(),
             summaryText = latestSummaryText
         )
         CallArchiveStore.save(this, archive)

@@ -35,6 +35,14 @@
             android:textColor="@color/text_primary" />
 
         <Button
+            android:id="@+id/btn_call_history"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Letzte Anrufe"
+            android:textSize="14sp"
+            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+        <Button
             android:id="@+id/btn_settings"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -608,56 +616,6 @@
                         android:text="Abmelden und Beenden"
                         android:textSize="18sp"
                         android:backgroundTint="@color/mic_off" />
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <!-- Recent calls card (visible when registered; populated programmatically) -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/card_recent_calls"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                android:visibility="gone"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/surface">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Letzte Anrufe"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
-                        android:paddingTop="16dp"
-                        android:paddingBottom="8dp" />
-
-                    <!-- Rows added dynamically by MainActivity.refreshCallHistory() -->
-                    <LinearLayout
-                        android:id="@+id/ll_call_history"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical" />
-
-                    <!-- Shown when history is empty -->
-                    <TextView
-                        android:id="@+id/tv_no_calls"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Noch keine Anrufe"
-                        android:textSize="16sp"
-                        android:textColor="@color/status_neutral"
-                        android:gravity="center"
-                        android:padding="24dp"
-                        android:visibility="gone" />
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
