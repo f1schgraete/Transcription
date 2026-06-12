@@ -965,6 +965,18 @@
                         deterministic placement and stable Button instances
                         the activity can wire up by id.
                     -->
+                    <!--
+                        Scrollable so a full set of 12 tiles can never clip
+                        on a shorter tablet; the "Letzte Anrufe" button below
+                        stays pinned at the bottom of the card. With the
+                        default 4 favourites there's nothing to scroll.
+                    -->
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:fillViewport="true">
+
                     <GridLayout
                         android:id="@+id/ll_favourites"
                         android:layout_width="match_parent"
@@ -1046,17 +1058,87 @@
                             android:visibility="gone"
                             android:text="+ Hinzufügen" />
 
+                        <Button android:id="@+id/btn_fav_6"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:visibility="gone"
+                            android:text="+ Hinzufügen" />
+
+                        <Button android:id="@+id/btn_fav_7"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:visibility="gone"
+                            android:text="+ Hinzufügen" />
+
+                        <Button android:id="@+id/btn_fav_8"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:visibility="gone"
+                            android:text="+ Hinzufügen" />
+
+                        <Button android:id="@+id/btn_fav_9"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:visibility="gone"
+                            android:text="+ Hinzufügen" />
+
+                        <Button android:id="@+id/btn_fav_10"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:visibility="gone"
+                            android:text="+ Hinzufügen" />
+
+                        <Button android:id="@+id/btn_fav_11"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="80dp"
+                            android:layout_columnWeight="1"
+                            android:layout_margin="4dp"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:maxLines="2"
+                            android:ellipsize="end"
+                            android:visibility="gone"
+                            android:text="+ Hinzufügen" />
+
                     </GridLayout>
 
-                    <!--
-                        Spacer pushes the history button to the bottom of
-                        the card, filling the space gained by removing the
-                        old inline "Letzte Anrufe" list.
-                    -->
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="0dp"
-                        android:layout_weight="1" />
+                    </ScrollView>
 
                     <!--
                         Prominent, coloured entry point to the full call

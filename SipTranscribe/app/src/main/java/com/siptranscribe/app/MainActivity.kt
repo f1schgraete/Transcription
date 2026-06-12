@@ -179,8 +179,8 @@ class MainActivity : AppCompatActivity() {
          *  doesn't lose your work) but invisible. */
         const val KEY_FAVOURITE_COUNT = "favourite_count"
         const val DEFAULT_FAVOURITE_COUNT = 4
-        val FAVOURITE_COUNT_OPTIONS = intArrayOf(2, 4, 6)
-        const val MAX_FAVOURITE_SLOTS = 6
+        val FAVOURITE_COUNT_OPTIONS = intArrayOf(2, 4, 6, 8, 10, 12)
+        const val MAX_FAVOURITE_SLOTS = 12
         /** Seconds between in-call summary refreshes. Bottoming out at 5 s
          *  keeps us from hammering Azure on a misconfigured value. */
         const val DEFAULT_SUMMARY_INTERVAL_SECONDS = 25
@@ -545,7 +545,9 @@ class MainActivity : AppCompatActivity() {
 
         val buttons: Array<android.widget.Button?> = arrayOf(
             binding.btnFav0, binding.btnFav1, binding.btnFav2,
-            binding.btnFav3, binding.btnFav4, binding.btnFav5
+            binding.btnFav3, binding.btnFav4, binding.btnFav5,
+            binding.btnFav6, binding.btnFav7, binding.btnFav8,
+            binding.btnFav9, binding.btnFav10, binding.btnFav11
         )
         val count = currentFavouriteCount()
         for (slot in 0 until MAX_FAVOURITE_SLOTS) {
