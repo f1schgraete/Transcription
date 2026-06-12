@@ -843,6 +843,10 @@ class CallActivity : AppCompatActivity() {
         // accept, Connected, StreamsRunning). ListenActivity uses this to
         // decide whether to dismiss itself after interrupting a Zuhören session.
         lastAnsweredAtMs = System.currentTimeMillis()
+        // The incoming-call notification is ongoing=true so the user cannot
+        // swipe it away. Cancel it immediately the moment the call goes active
+        // (not just at the end of the call) so it stops blocking the screen.
+        cancelIncomingNotification()
         if (binding.layoutActive.visibility == View.VISIBLE) return
         binding.layoutCalling.visibility = View.GONE
         binding.layoutIncoming.visibility = View.GONE

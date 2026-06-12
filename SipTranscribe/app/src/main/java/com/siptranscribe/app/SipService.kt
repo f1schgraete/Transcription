@@ -19,7 +19,9 @@ class SipService : Service() {
     private var coreListener: CoreListenerStub? = null
 
     companion object {
-        private const val CHANNEL_ID = "sip_service_channel"
+        // v2 suffix forces Android to create a new channel; importance is now
+        // IMPORTANCE_MIN so no status-bar icon appears while the service runs.
+        private const val CHANNEL_ID = "sip_service_channel_v2"
         const val CALL_CHANNEL_ID = "incoming_call_channel"
         private const val NOTIFICATION_ID = 1
         const val INCOMING_CALL_NOTIF_ID = 2
@@ -175,11 +177,13 @@ class SipService : Service() {
     private fun createNotificationChannels() {
         val mgr = getSystemService(NotificationManager::class.java)
 
-        // Low-priority service channel (status bar only)
+        // Minimum-importance service channel: no status-bar icon, no sound,
+        // appears only in the notification shade when pulled down.
+        // (IMPORTANCE_LOW would show a persistent icon top-left — we don't want that.)
         val serviceChannel = NotificationChannel(
             CHANNEL_ID,
             getString(R.string.app_name),
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_MIN
         ).apply { description = "SIP Telefon Status" }
         mgr.createNotificationChannel(serviceChannel)
 
